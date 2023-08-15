@@ -49,20 +49,17 @@ public:
         }
     }
 
-    void dispNames(U8G2 *pOled, byte selected, byte currentItem0, byte currentItem1, byte currentItem2, byte currentItem3)
+    void dispNames(U8G2 *pOled, byte selected, 
+        uint16_t analogValue0, uint16_t analogValue1, 
+        byte btnAState, byte btnBState)
     {
         static char disp_buf[20] = {0};
-        byte currents [] = {currentItem0, currentItem1, currentItem2, currentItem3};
         pOled->setFont(u8g2_font_6x13_tf);
 
+        // pots and encoder
         for (byte i = 0; i < 3; ++i)
         {
-            byte height = _height * i;
-            if (selected)
-            {
-                pOled->drawFrame(_offsetX, height, _maxWidth, _frameHeight);
-            }
-
+            // setting label and values
             byte valueItem = (byte)(*_pValueItems[i]);
             switch (_DispMode[i])
             {
@@ -90,16 +87,28 @@ public:
                 break;
             }
 
+            // frames
+            byte height = _height * i;
+            if (selected)
+            {
+                pOled->drawFrame(_offsetX, height, _maxWidth, _frameHeight);
+            }
+
             pOled->drawStr(_offsetX + 2, height, disp_buf);
 
-            byte value = (byte)constrain(map(valueItem, _MinItems[i], _MaxItems[i], 2, _maxWidth - 2), 2, _maxWidth - 2);
-            if (value > 2)
+            byte value = (byte)constrain(map(valueItem, _MinItems[i], _MaxItems[i], 1, _maxWidth - 1), 1, _maxWidth - 1);
+
+            // value fill
+            if (value > 1)
                 pOled->drawBox(_offsetX + 1, height + 1, value, _frameHeight - 2);
+
+            // pots indicator
             if (selected)
             {
                 if (i < 2)
                 {
-                    value = (byte)map(currents[i], 0, _maxAnalogBit, 1, _maxWidth - 2);
+                    uint16_t current = i == 0 ? analogValue0 : analogValue1;
+                    value = (byte)map(current, 0, 4096, 1, _maxWidth - 2);
                     byte x = _offsetX + value;
                     byte y = height + _frameHeight;
                     pOled->drawTriangle(x, y - 1, x + 4, y + 3, x - 4, y + 3);
@@ -108,6 +117,7 @@ public:
             }
         }
 
+        // Setting title and buttons
         if (selected)
         {
             pOled->setFont(u8g2_font_5x8_tf);
@@ -119,9 +129,9 @@ public:
             pOled->drawFrame(63, _height * 3, 32, 12);
             pOled->drawFrame(96, _height * 3, 32, 12);
 
-            if ((byte)(*_pValueItems[3]) || currents[2])
+            if ((byte)(*_pValueItems[3]) || btnAState)
                 pOled->drawBox(63, _height * 3, 32, 12);
-            if ((byte)(*_pValueItems[4]) || currents[3])
+            if ((byte)(*_pValueItems[4]) || btnBState)
                 pOled->drawBox(96, _height * 3, 32, 12);
 
             pOled->setFont(u8g2_font_8x13B_tf);
@@ -131,7 +141,6 @@ public:
     }
 
 private:
-    int16_t _maxAnalogBit = 63;
     byte _offsetX = 0;
     byte _maxWidth = 63;
     byte _height = 16;
@@ -157,16 +166,12 @@ extern byte testtone;
 
 static RotaryEncoder encA;
 static RotaryEncoder encB;
-static SmoothAnalogRead potA;
-static SmoothAnalogRead potB;
-static Button btnA;
-static Button btnB;
+static SmoothAnalogRead pots[2];
+static Button buttons[2];
 static byte isOLEDInit = 0;
 static byte userParamSave = 0;
 static byte userParamLoad = 0;
-// static byte userParamLoadDef = 0;
 static byte userConfigSave = 0;
-static byte potDisp[2] = {0, 0};
 static byte btnDisp[2] = {0, 0};
 
 static byte nullItem = 0;
@@ -330,9 +335,9 @@ void dispOLED(int menuIndex)
     // Serial.print(selected);
     // Serial.print(",");
     // Serial.println(menuIndex);
-    ps[page].dispNames(&u8g2, !selected, potDisp[0], potDisp[1], btnDisp[0], btnDisp[1]);
+    ps[page].dispNames(&u8g2, !selected, pots[0].getValue(), pots[1].getValue(), btnDisp[0], btnDisp[1]);
     if (MENUMAX > page + 1){
-        ps[page + 1].dispNames(&u8g2, selected, potDisp[0], potDisp[1], btnDisp[0], btnDisp[1]);
+        ps[page + 1].dispNames(&u8g2, selected, pots[0].getValue(), pots[1].getValue(), btnDisp[0], btnDisp[1]);
     }
     u8g2.sendBuffer();
 }
@@ -344,13 +349,12 @@ void initController()
     // reconnectDigitalIn(A0);
     encA.init(10, 11);
     encB.init(12, 13);
-    potA.init(A0);
-    potB.init(A1);
-    btnA.init(14);
-    btnB.init(15);
-
-    btnA.setHoldTime(200);
-    btnB.setHoldTime(200);
+    pots[0].init(A0);
+    pots[1].init(A1);
+    buttons[0].init(14);
+    buttons[1].init(15);
+    buttons[0].setHoldTime(200);
+    buttons[1].setHoldTime(200);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -372,7 +376,7 @@ su constrainCyclic(su value, su min, su max)
 
 static int menuIndex = 0;
 static byte reqUpdateDisp = 0;
-static byte reqResetDisp = 0;
+static byte reqResetDisp = 1;
 
 /// @brief 設定情報の更新
 byte updateUserIF()
@@ -380,7 +384,6 @@ byte updateUserIF()
     if (!isOLEDInit)
         return 0;
     
-    byte lastreqUpdateDisp = reqUpdateDisp;
     static byte lastmenuIndex = menuIndex;
     static byte unlock[2] = {0, 0};
     menuIndex = constrainCyclic(menuIndex + encB.getDirection(true), 0, MENUMAX - 1);
@@ -394,89 +397,66 @@ byte updateUserIF()
     }
     else
     {
-        static byte potDispOld[2] = {255, 255};
-        static SmoothAnalogRead *sar[2] = {&potA, &potB};
+        // pots
         for (byte i = 0; i < 2; ++i)
         {
-            uint16_t readValue = sar[i]->analogRead();
+            uint16_t readValue = pots[i].analogRead();
             byte value = (*(byte *)(values[menuIndex][i][0]));
             byte min = (*(byte *)values[menuIndex][i][1]);
             byte max = (*(byte *)values[menuIndex][i][2]);
-            byte newValue = constrain(map(readValue, 0, 4096, min, max), min, max);
+            byte newValue = constrain(map(readValue, 0, 4095, min, max), min, max);
             if (newValue == value)
             {
                 unlock[i] = 1;
             }
+
             if (unlock[i])
             {
                 (*(byte *)(values[menuIndex][i][0])) = newValue;       
             }
 
-            // 表示用：アナログ入力10bitを7bit値で表示
-            potDisp[i] = map(readValue, 0, 4096, 0, 63);
-            if (potDispOld[i] != potDisp[i])
+            if (pots[i].hasChanged())
             {
                 reqUpdateDisp = 1;
             }
-            potDispOld[i] = potDisp[i];
         }
 
-        // エンコーダー操作
+        // encoder
         byte value = (*(byte *)(values[menuIndex][2][0]));
         byte min = (*(byte *)values[menuIndex][2][1]);
         byte max = (*(byte *)values[menuIndex][2][2]);
         int8_t encoder = encA.getDirection();
-        int8_t step = encoder;
-        if (max <= 32)
-        {
-            step = constrain(encoder, -1, 1);
-        }
-
+        int8_t step = max <= 32 ? constrain(encoder, -1, 1) : encoder;
         (*(byte *)(values[menuIndex][2][0])) = constrain((int)value + step, min, max);
         if (encoder != 0)
         {
             reqUpdateDisp = 1;
         }
 
-
-        byte stateA = btnA.getState();
-        if (stateA == 2)
+        // buttons
+        for (byte i = 0; i < 2; ++i)
         {
-            min = (*(byte *)values[menuIndex][3][1]);
-            max = (*(byte *)values[menuIndex][3][2]);
-            if (min != max)
+            byte state = buttons[i].getState();
+            byte settingIndex = i + 3;
+            if (state == 2)
             {
-                (*(byte *)(values[menuIndex][3][0])) = (*(byte *)(values[menuIndex][3][0])) ? 0 : 1;
-                reqUpdateDisp = 1;
-                btnDisp[0] = 1;
+                min = (*(byte *)values[menuIndex][settingIndex][1]);
+                max = (*(byte *)values[menuIndex][settingIndex][2]);
+                if (min != max)
+                {
+                    // toggle
+                    (*(byte *)(values[menuIndex][settingIndex][0])) = 
+                        (*(byte *)(values[menuIndex][settingIndex][0])) ? 0 : 1;
+                    reqUpdateDisp = 1;
+                    btnDisp[i] = 1;
+                }
             }
-        }
-
-        byte stateB = btnB.getState();
-        if (stateB == 2)
-        {
-            min = (*(byte *)values[menuIndex][4][1]);
-            max = (*(byte *)values[menuIndex][4][2]);
-            if (min != max)
-            {
-                (*(byte *)(values[menuIndex][4][0])) = (*(byte *)(values[menuIndex][4][0])) ? 0 : 1;
-                reqUpdateDisp = 1;
-                btnDisp[1] = 1;
-            }
+            
         }
     }
+
     lastmenuIndex = menuIndex;
 
-    // 設定保存・呼び出し
-    // if (userParamLoadDef == 1)
-    // {
-    //     userParamLoadDef = 0;
-    //     initSynthPatch(&patch);
-    //     initUserConfig(&conf);
-    //     saveUserConfig(&conf);
-    //     reqResetDisp = 1;
-    // }
-    // else
     if (userParamLoad == 1)
     {
         userParamLoad = 0;
