@@ -1,3 +1,4 @@
 .pio
 .vscode/
 utilities/
+*.code-workspace

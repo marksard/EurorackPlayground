@@ -22,6 +22,7 @@
 #include "EEPROMData.h"
 #include "../../commonlib/soundlogic/Overdrive.hpp"
 #include "../../commonlib/common/RecieveMidi.hpp"
+#include "../../commonlib/common/RecieveGateOct.hpp"
 #include "../../commonlib/common/SyncInTrigger.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
 #include "../../commonlib/common/SequenceGenerator.hpp"
@@ -31,6 +32,7 @@
 
 #define DELAY_FEEDBACK_MEM 16384
 #define GATE_PIN 7
+#define VOCT_PIN A2
 
 static Oscillator osc;
 static Oscil<SIN256_NUM_CELLS, AUDIO_RATE> lfo01(SIN256_DATA);
@@ -39,7 +41,7 @@ static ADSR<CONTROL_RATE, CONTROL_RATE> envFlt;
 static ADSR<CONTROL_RATE, CONTROL_RATE> envAmp;
 static ResonantFilterEx<LOWPASS> lpf01;
 static AudioDelayFeedback<DELAY_FEEDBACK_MEM, ALLPASS> audioDelay;
-static SmoothAnalogRead vOctRead;
+static RecieveGateOct rgo;
 static Overdrive overDrive;
 // static Overdrive limitter;
 static SendRecvMIDI rm(1);
@@ -90,26 +92,21 @@ void envSetADR(ADSR<CONTROL_RATE, CONTROL_RATE> *pEnv, int attack, int decay, in
 /// @brief GATE/CV情報受付
 void recieveGateCV()
 {
-    static byte gatePrev = LOW;
-    // Gate入力
-    byte gate = digitalRead(GATE_PIN);
-    if (gate == HIGH && gatePrev == LOW)
+    if (rgo.ready())
     {
-        envFlt.noteOn();
-        envAmp.noteOn();
+        if (rgo.isNoteOn())
+        {
+            envFlt.noteOn();
+            envAmp.noteOn();
+        }
+        else if (rgo.isNoteOff())
+        {
+            envFlt.noteOff();
+            envAmp.noteOff();
+        }
     }
-    else if (gate == LOW && gatePrev == HIGH)
-    {
-        envFlt.noteOff();
-        envAmp.noteOff();
-    }
 
-    gatePrev = gate;
-
-    // CV入力
-    int vOct = vOctRead.analogRead(false);
-    // Serial.println(vOct);
-
+    int vOct = rgo.getVOct();
     osc.setFreqFromVOctCalc12bit(Oscillator::Select::OSC01, vOct, patch.osc01_octfull, patch.osc01_detune);
     int add = patch.osc02_detune + AMOUNT((int)lfo01Step, patch.lfo01_amt_osc02, 8);
     osc.setFreqFromVOctCalc12bit(Oscillator::Select::OSC02, vOct, patch.osc02_octfull, add);
@@ -222,7 +219,7 @@ void initSynth()
     startMozzi(CONTROL_RATE);
 
     analogReadResolution(12);
-    vOctRead.init(A2);
+    rgo.init(GATE_PIN, VOCT_PIN);
 
     initController();
 
