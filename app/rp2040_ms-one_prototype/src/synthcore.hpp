@@ -17,22 +17,21 @@
 #include <tables/sin256_int8.h>
 #include <ADSR.h>
 #include <AudioDelayFeedback.h>
-#include "ResonantFilterEx.hpp"
-#include "Oscillator.hpp"
-#include "EEPROMData.h"
 #include "../../commonlib/soundlogic/Overdrive.hpp"
 #include "../../commonlib/common/RecieveMidi.hpp"
 #include "../../commonlib/common/RecieveGateOct.hpp"
 #include "../../commonlib/common/SyncInTrigger.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
 #include "../../commonlib/common/SequenceGenerator.hpp"
+#include "ResonantFilterEx.hpp"
+#include "Oscillator.hpp"
+#include "EEPROMData.h"
+#include "GpioSet.h"
 #include "UI.h"
 
 #define AMOUNT(value, amount, max) ((amount) == 0 ? 0 : ((value) >> ((max) - (amount))))
 
 #define DELAY_FEEDBACK_MEM 16384
-#define GATE_PIN 7
-#define VOCT_PIN A2
 
 static Oscillator osc;
 static Oscil<SIN256_NUM_CELLS, AUDIO_RATE> lfo01(SIN256_DATA);
@@ -44,7 +43,7 @@ static AudioDelayFeedback<DELAY_FEEDBACK_MEM, ALLPASS> audioDelay;
 static RecieveGateOct rgo;
 static Overdrive overDrive;
 // static Overdrive limitter;
-static SendRecvMIDI rm(1);
+static SendRecvMIDI rm(Serial2, 1);
 static PollingTimeEvent sit;
 // static SyncInTrigger sit(GATE_PIN);
 static SequenceAutoChanger seqGen(&sit);

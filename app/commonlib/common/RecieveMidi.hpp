@@ -18,8 +18,8 @@
 class RecieveMidi
 {
 public:
-    RecieveMidi()
-        : midiTransport(Serial2), midiInterface((MidiTransport &)midiTransport)
+    RecieveMidi(MIDI_NAMESPACE::SerialMIDI<HardwareSerial> midi)
+        : midiTransport(midi), midiInterface((MidiTransport &)midiTransport)
     {
 
         for (int8_t i = 0; i < MAX_USBMIDI_NOTE; ++i)
@@ -127,7 +127,7 @@ protected:
 class SendRecvMIDI : public RecieveMidi
 {
 public:
-    SendRecvMIDI(byte midiCh):RecieveMidi()
+    SendRecvMIDI(MIDI_NAMESPACE::SerialMIDI<HardwareSerial> midi, byte midiCh):RecieveMidi(midi)
     {
         _midiCh = midiCh;
     }

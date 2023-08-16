@@ -7,6 +7,7 @@
 #include "../../commonlib/common/RotaryEncoder.hpp"
 #include "../../commonlib/common/Button.hpp"
 #include "../../commonlib/soundlogic/OscillatorTables12.h"
+#include "GpioSet.h"
 #include "EEPROMData.h"
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, /* reset=*/U8X8_PIN_NONE);
@@ -347,12 +348,12 @@ void initController()
 {
     // reconnectDigitalIn(A1);
     // reconnectDigitalIn(A0);
-    encA.init(10, 11);
-    encB.init(12, 13);
-    pots[0].init(A0);
-    pots[1].init(A1);
-    buttons[0].init(14);
-    buttons[1].init(15);
+    encA.init(ENC0A, ENC0B);
+    encB.init(ENC1A, ENC1B);
+    pots[0].init(POT0);
+    pots[1].init(POT1);
+    buttons[0].init(SW0);
+    buttons[1].init(SW1);
     buttons[0].setHoldTime(200);
     buttons[1].setHoldTime(200);
 }
