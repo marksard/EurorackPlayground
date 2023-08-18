@@ -38,7 +38,7 @@ static Oscil<SIN256_NUM_CELLS, AUDIO_RATE> lfo01(SIN256_DATA);
 static Oscil<SIN256_NUM_CELLS, AUDIO_RATE> lfo02(SIN256_DATA);
 static ADSR<CONTROL_RATE, CONTROL_RATE> envFlt;
 static ADSR<CONTROL_RATE, CONTROL_RATE> envAmp;
-static ResonantFilterEx<LOWPASS> lpf01;
+static ResonantFilterEx<LOWPASS, uint16_t> lpf01;
 static AudioDelayFeedback<DELAY_FEEDBACK_MEM, ALLPASS> audioDelay;
 static RecieveGateOct rgo;
 static Overdrive overDrive;
@@ -296,7 +296,7 @@ void updateSynth()
     // フィルター情報更新
     int freq = min(patch.flt_Freq + envFltStep, 255);
     freq = constrain(freq + AMOUNT((int)lfo01Step, patch.lfo01_amt_ffreq, 8), 0, 255);
-    lpf01.setCutoffFreqAndResonance(freq, patch.flt_Reso);
+    lpf01.setCutoffFreqAndResonance(freq * 255, patch.flt_Reso * 255);
 }
 
 AudioOutput_t updateAudio()
