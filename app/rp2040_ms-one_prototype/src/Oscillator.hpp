@@ -10,10 +10,11 @@
 #include <mozzi_midi.h>
 #include <Oscil.h>
 #include <Line.h>
-#include <tables/phasor256_int8.h>
-#include <tables/sin256_int8.h>
-#include <tables/waveshape1_softclip_int8.h>
-#include "ACIDSAW_C.h"
+#include <tables/saw8192_int8.h>
+#include <tables/smoothsquare8192_int8.h>
+#include <tables/triangle_warm8192_int8.h>
+#include <tables/sin8192_int8.h>
+// #include "ACIDSAW_C.h"
 #include "../../commonlib/soundlogic/OscillatorTables12.h"
 
 #define OSC_MAX 4
@@ -55,7 +56,7 @@ public:
     enum class Wave
     {
         SAW,
-        SW2,
+        TRI,
         SQR,
         SIN,
     };
@@ -69,14 +70,14 @@ public:
     {
         _vOctCalibration = 100.0;
         _slideTime = 0;
-        _osc01Saw.setTable(PHASOR256_DATA);
-        _osc02Saw.setTable(PHASOR256_DATA);
-        _osc01Sw2.setTable(ACIDSAW_C_DATA);
-        _osc02Sw2.setTable(ACIDSAW_C_DATA);
-        _osc01Sqr.setTable(WAVESHAPE1_SOFTCLIP_DATA);
-        _osc02Sqr.setTable(WAVESHAPE1_SOFTCLIP_DATA);
-        _osc01Sin.setTable(SIN256_DATA);
-        _osc02Sin.setTable(SIN256_DATA);
+        _osc01Saw.setTable(SAW8192_DATA);
+        _osc02Saw.setTable(SAW8192_DATA);
+        _osc01Sqr.setTable(SMOOTHSQUARE8192_DATA);
+        _osc02Sqr.setTable(SMOOTHSQUARE8192_DATA);
+        _osc01Tri.setTable(TRIANGLE_WARM8192_DATA);
+        _osc02Tri.setTable(TRIANGLE_WARM8192_DATA);
+        _osc01Sin.setTable(SIN8192_DATA);
+        _osc02Sin.setTable(SIN8192_DATA);
     }
 
     AudioOutput_t next()
@@ -212,16 +213,16 @@ protected:
     float _vOctCalibration;
     OscillatorValues _oscValues[2];
 
-    Oscil<256, AUDIO_RATE> _osc01Saw;
-    Oscil<256, AUDIO_RATE> _osc02Saw;
-    Oscil<256, AUDIO_RATE> _osc01Sw2;
-    Oscil<256, AUDIO_RATE> _osc02Sw2;
-    Oscil<256, AUDIO_RATE> _osc01Sqr;
-    Oscil<256, AUDIO_RATE> _osc02Sqr;
-    Oscil<256, AUDIO_RATE> _osc01Sin;
-    Oscil<256, AUDIO_RATE> _osc02Sin;
-    Oscil<256, AUDIO_RATE> *waveTable[2][OSC_MAX] =
+    Oscil<8192, AUDIO_RATE> _osc01Saw;
+    Oscil<8192, AUDIO_RATE> _osc02Saw;
+    Oscil<8192, AUDIO_RATE> _osc01Sqr;
+    Oscil<8192, AUDIO_RATE> _osc02Sqr;
+    Oscil<8192, AUDIO_RATE> _osc01Tri;
+    Oscil<8192, AUDIO_RATE> _osc02Tri;
+    Oscil<8192, AUDIO_RATE> _osc01Sin;
+    Oscil<8192, AUDIO_RATE> _osc02Sin;
+    Oscil<8192, AUDIO_RATE> *waveTable[2][OSC_MAX] =
         {
-            {&_osc01Saw, &_osc01Sw2, &_osc01Sqr, &_osc01Sin},
-            {&_osc02Saw, &_osc02Sw2, &_osc02Sqr, &_osc02Sin}};
+            {&_osc01Saw, &_osc01Sqr, &_osc01Tri, &_osc01Sin},
+            {&_osc02Saw, &_osc02Sqr, &_osc02Tri, &_osc02Sin}};
 };

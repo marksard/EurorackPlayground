@@ -13,7 +13,7 @@
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, /* reset=*/U8X8_PIN_NONE);
 
 static const char *_note[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-static const char *_shape[] = {"saw", "saw2", "square", "sine"};
+static const char *_shape[] = {"saw", "square", "triange", "sine"};
 static const char *_mode[] = {"analog in", "midi in", "int. seq"};
 static const char *_scale[] = {"ion:maj", "dorian", "phrygian", "lydian", "mixo", "aeo:n.min", "locrian"};
 
