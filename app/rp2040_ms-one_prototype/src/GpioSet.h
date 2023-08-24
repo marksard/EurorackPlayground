@@ -2,7 +2,9 @@
 
 #include <Arduino.h>
 
-#if 0
+// #define PROTO
+
+#ifndef PROTO
 #define GATE_PIN A2
 #define VOCT_PIN A3
 #define ENC0A 2

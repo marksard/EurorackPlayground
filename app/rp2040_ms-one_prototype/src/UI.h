@@ -17,6 +17,14 @@ static const char *_shape[] = {"saw", "square", "triange", "sine"};
 static const char *_mode[] = {"analog in", "midi in", "int. seq"};
 static const char *_scale[] = {"ion:maj", "dorian", "phrygian", "lydian", "mixo", "aeo:n.min", "locrian"};
 
+#ifdef PROTO
+#define TITLE_ROW 3
+#define POTS_ROW 0
+#else
+#define TITLE_ROW 0
+#define POTS_ROW 1
+#endif
+
 class ParamSet
 {
 public:
@@ -89,7 +97,7 @@ public:
             }
 
             // frames
-            byte height = _height * i;
+            byte height = _height * (i + POTS_ROW);
             if (selected)
             {
                 pOled->drawFrame(_offsetX, height, _maxWidth, _frameHeight);
@@ -123,21 +131,21 @@ public:
         {
             pOled->setFont(u8g2_font_5x8_tf);
             strcpy(disp_buf, _pValueName[3]);
-            pOled->drawStr(63 + 1, _height * 3 + 1, disp_buf);
+            pOled->drawStr(63 + 1, _height * TITLE_ROW + 1, disp_buf);
             strcpy(disp_buf, _pValueName[4]);
-            pOled->drawStr(96 + 1, _height * 3 + 1, disp_buf);
+            pOled->drawStr(96 + 1, _height * TITLE_ROW + 1, disp_buf);
 
-            pOled->drawFrame(63, _height * 3, 32, 12);
-            pOled->drawFrame(96, _height * 3, 32, 12);
+            pOled->drawFrame(63, _height * TITLE_ROW, 32, 12);
+            pOled->drawFrame(96, _height * TITLE_ROW, 32, 12);
 
             if ((byte)(*_pValueItems[3]) || btnAState)
-                pOled->drawBox(63, _height * 3, 32, 12);
+                pOled->drawBox(63, _height * TITLE_ROW, 32, 12);
             if ((byte)(*_pValueItems[4]) || btnBState)
-                pOled->drawBox(96, _height * 3, 32, 12);
+                pOled->drawBox(96, _height * TITLE_ROW, 32, 12);
 
             pOled->setFont(u8g2_font_8x13B_tf);
             strcpy(disp_buf, _pTitle);
-            pOled->drawStr(0, _height * 3, disp_buf);
+            pOled->drawStr(0, _height * TITLE_ROW, disp_buf);
         }
     }
 
@@ -315,11 +323,14 @@ void initDispItems()
 
 void initOLED()
 {
+    u8g2.begin();
     u8g2.setFont(u8g2_font_7x14B_tf);
     u8g2.setContrast(40);
     u8g2.setFontPosTop();
     u8g2.setDrawColor(2);
-    u8g2.begin();
+#ifndef PROTO
+    u8g2.setFlipMode(1);
+#endif
     initDispItems();
     isOLEDInit = 1;
 }
@@ -354,8 +365,8 @@ void initController()
     pots[1].init(POT1);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
-    buttons[0].setHoldTime(200);
-    buttons[1].setHoldTime(200);
+    buttons[0].setHoldTime(1000);
+    buttons[1].setHoldTime(1000);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
