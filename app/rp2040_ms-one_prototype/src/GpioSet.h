@@ -4,6 +4,7 @@
 
 // #define PROTO
 
+// GIPO割り当て
 #ifndef PROTO
 #define GATE_PIN A2
 #define VOCT_PIN A3
@@ -27,3 +28,6 @@
 #define POT0 A0
 #define POT1 A1
 #endif
+
+#define POTS_BIT 12
+#define POTS_MAX_VALUE 4095

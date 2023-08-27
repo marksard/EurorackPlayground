@@ -217,7 +217,7 @@ void initSynth()
 
     startMozzi(CONTROL_RATE);
 
-    analogReadResolution(12);
+    analogReadResolution(POTS_BIT);
     rgo.init(GATE_PIN, VOCT_PIN);
 
     initController();

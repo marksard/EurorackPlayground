@@ -32,12 +32,26 @@ public:
     {
     }
 
+    void init(U8G2 *pU8g2)
+    {
+        _pU8g2 = pU8g2;
+        _offsetX = 0;
+        _maxWidth = 63;
+        _height = 16;
+        _frameHeight = 13;
+    }
+
+    void setMaxWidth(byte maxWidth)
+    {
+        _maxWidth = maxWidth;
+    }
+
     void setOffset(byte offsetX)
     {
         _offsetX = offsetX;
     }
 
-    void setNames(const char *names[])
+    void attachNames(const char *names[])
     {
         _pTitle = names[0];
         _pValueName[0] = names[1];
@@ -47,7 +61,7 @@ public:
         _pValueName[4] = names[5];
     }
 
-    void setValues(byte *values[5][4])
+    void attachValues(byte *values[5][4])
     {
         for (byte i = 0; i < 5; ++i)
         {
@@ -58,12 +72,12 @@ public:
         }
     }
 
-    void dispNames(U8G2 *pOled, byte selected, 
+    void dispParamSet(byte selected, 
         uint16_t analogValue0, uint16_t analogValue1, 
         byte btnAState, byte btnBState)
     {
         static char disp_buf[20] = {0};
-        pOled->setFont(u8g2_font_6x13_tf);
+        _pU8g2->setFont(u8g2_font_6x13_tf);
 
         // pots and encoder
         for (byte i = 0; i < 3; ++i)
@@ -100,16 +114,16 @@ public:
             byte height = _height * (i + POTS_ROW);
             if (selected)
             {
-                pOled->drawFrame(_offsetX, height, _maxWidth, _frameHeight);
+                _pU8g2->drawFrame(_offsetX, height, _maxWidth, _frameHeight);
             }
 
-            pOled->drawStr(_offsetX + 2, height, disp_buf);
+            _pU8g2->drawStr(_offsetX + 2, height, disp_buf);
 
             byte value = (byte)constrain(map(valueItem, _MinItems[i], _MaxItems[i], 1, _maxWidth - 1), 1, _maxWidth - 1);
 
             // value fill
             if (value > 1)
-                pOled->drawBox(_offsetX + 1, height + 1, value, _frameHeight - 2);
+                _pU8g2->drawBox(_offsetX + 1, height + 1, value, _frameHeight - 2);
 
             // pots indicator
             if (selected)
@@ -117,43 +131,51 @@ public:
                 if (i < 2)
                 {
                     uint16_t current = i == 0 ? analogValue0 : analogValue1;
-                    value = (byte)map(current, 0, 4096, 1, _maxWidth - 2);
+                    value = (byte)map(current, 0, POTS_MAX_VALUE, 1, _maxWidth - 2);
                     byte x = _offsetX + value;
                     byte y = height + _frameHeight;
-                    pOled->drawTriangle(x, y - 1, x + 4, y + 3, x - 4, y + 3);
-                    pOled->drawVLine(x, height + 1, _frameHeight - 2);
+                    _pU8g2->drawTriangle(x, y - 1, x + 4, y + 3, x - 4, y + 3);
+                    _pU8g2->drawVLine(x, height + 1, _frameHeight - 2);
                 }
             }
         }
 
+        dispTitle(selected, btnAState, btnBState);
+    }
+
+    void dispTitle(byte selected, 
+        byte btnAState, byte btnBState)
+    {
+        static char disp_buf[20] = {0};
         // Setting title and buttons
         if (selected)
         {
-            pOled->setFont(u8g2_font_5x8_tf);
+            _pU8g2->setFont(u8g2_font_5x8_tf);
             strcpy(disp_buf, _pValueName[3]);
-            pOled->drawStr(63 + 1, _height * TITLE_ROW + 1, disp_buf);
+            _pU8g2->drawStr(63 + 1, _height * TITLE_ROW + 1, disp_buf);
             strcpy(disp_buf, _pValueName[4]);
-            pOled->drawStr(96 + 1, _height * TITLE_ROW + 1, disp_buf);
+            _pU8g2->drawStr(96 + 1, _height * TITLE_ROW + 1, disp_buf);
 
-            pOled->drawFrame(63, _height * TITLE_ROW, 32, 12);
-            pOled->drawFrame(96, _height * TITLE_ROW, 32, 12);
+            _pU8g2->drawFrame(63, _height * TITLE_ROW, 32, 12);
+            _pU8g2->drawFrame(96, _height * TITLE_ROW, 32, 12);
 
             if ((byte)(*_pValueItems[3]) || btnAState)
-                pOled->drawBox(63, _height * TITLE_ROW, 32, 12);
+                _pU8g2->drawBox(63, _height * TITLE_ROW, 32, 12);
             if ((byte)(*_pValueItems[4]) || btnBState)
-                pOled->drawBox(96, _height * TITLE_ROW, 32, 12);
+                _pU8g2->drawBox(96, _height * TITLE_ROW, 32, 12);
 
-            pOled->setFont(u8g2_font_8x13B_tf);
+            _pU8g2->setFont(u8g2_font_8x13B_tf);
             strcpy(disp_buf, _pTitle);
-            pOled->drawStr(0, _height * TITLE_ROW, disp_buf);
+            _pU8g2->drawStr(0, _height * TITLE_ROW, disp_buf);
         }
     }
 
 private:
-    byte _offsetX = 0;
-    byte _maxWidth = 63;
-    byte _height = 16;
-    byte _frameHeight = 13;
+    U8G2 *_pU8g2;
+    byte _offsetX;
+    byte _maxWidth;
+    byte _height;
+    byte _frameHeight;
     byte *_pValueItems[5];
     byte _MinItems[5];
     byte _MaxItems[5];
@@ -315,9 +337,10 @@ void initDispItems()
 {
     for (byte i = 0; i < MENUMAX; ++i)
     {
+        ps[i].init(&u8g2);
         ps[i].setOffset(i % 2 == 1 ? 64 : 0);
-        ps[i].setNames(names[i]);
-        ps[i].setValues(values[i]);
+        ps[i].attachNames(names[i]);
+        ps[i].attachValues(values[i]);
     }
 }
 
@@ -347,9 +370,9 @@ void dispOLED(int menuIndex)
     // Serial.print(selected);
     // Serial.print(",");
     // Serial.println(menuIndex);
-    ps[page].dispNames(&u8g2, !selected, pots[0].getValue(), pots[1].getValue(), btnDisp[0], btnDisp[1]);
+    ps[page].dispParamSet(!selected, pots[0].getValue(), pots[1].getValue(), btnDisp[0], btnDisp[1]);
     if (MENUMAX > page + 1){
-        ps[page + 1].dispNames(&u8g2, selected, pots[0].getValue(), pots[1].getValue(), btnDisp[0], btnDisp[1]);
+        ps[page + 1].dispParamSet(selected, pots[0].getValue(), pots[1].getValue(), btnDisp[0], btnDisp[1]);
     }
     u8g2.sendBuffer();
 }
@@ -416,7 +439,7 @@ byte updateUserIF()
             byte value = (*(byte *)(values[menuIndex][i][0]));
             byte min = (*(byte *)values[menuIndex][i][1]);
             byte max = (*(byte *)values[menuIndex][i][2]);
-            byte newValue = constrain(map(readValue, 0, 4095, min, max), min, max);
+            byte newValue = constrain(map(readValue, 0, POTS_MAX_VALUE, min, max), min, max);
             if (newValue == value)
             {
                 unlock[i] = 1;
