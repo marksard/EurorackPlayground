@@ -139,7 +139,7 @@ void recieveMIDI()
 /// @brief ランダムシーケンサ
 void randomSequencer()
 {
-    static byte seq2PPQ = 0;
+    static byte ppqCount = 24;
     static byte lastNote = 0;
 
     if (seqChange)
@@ -153,11 +153,11 @@ void randomSequencer()
         rm.sendClock();
         if (conf.sendSync)
         {
-            seq2PPQ++;
-            if (seq2PPQ / 6)
+            ppqCount++;
+            if (ppqCount / (24 / conf.seqPpq))
             {
                 digitalWrite(GATE_PIN, HIGH);
-                seq2PPQ = 0;
+                ppqCount = 0;
             }
             else
                 digitalWrite(GATE_PIN, LOW);
@@ -166,7 +166,7 @@ void randomSequencer()
 
     if (!seqStart)
     {
-        seq2PPQ = 0;
+        ppqCount = 24;
         digitalWrite(GATE_PIN, LOW);
         seqGen.resetSeq();
         envFlt.noteOff();
