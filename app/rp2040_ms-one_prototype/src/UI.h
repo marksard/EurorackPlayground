@@ -211,6 +211,16 @@ void initController()
     encB.init(ENC1A, ENC1B);
     pots[0].init(POT0);
     pots[1].init(POT1);
+
+    // 空読みして内部状態を安定させる
+    for (byte i = 0; i < 255; ++i)
+    {
+        encA.getDirection();
+        encB.getDirection();
+        pots[0].analogRead();
+        pots[1].analogRead();
+    }
+
     buttons[0].init(SW0);
     buttons[1].init(SW1);
     buttons[0].setHoldTime(1000);
@@ -265,9 +275,9 @@ byte updateUserIF()
             byte min = (*(byte *)values[menuIndex][i][1]);
             byte max = (*(byte *)values[menuIndex][i][2]);
             byte newValue = constrain(map(readValue, 0, POTS_MAX_VALUE, min, max), min, max);
-            if (newValue == value)
+                        if (newValue == value)
             {
-                unlock[i] = 1;
+                                unlock[i] = 1;
             }
 
             if (unlock[i])
