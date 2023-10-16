@@ -101,7 +101,16 @@ const byte accMap[MAX_TIMINGS][MAX_SEQ] PROGMEM = {
 class SequenceGenerator
 {
 public:
+    SequenceGenerator()
+    {
+    }
+
     SequenceGenerator(TriggerInterface *pTrigger)
+    {
+        setTrigger(pTrigger);
+    }
+
+    void setTrigger(TriggerInterface *pTrigger)
     {
         _pTrigger = pTrigger;
     }
@@ -337,7 +346,17 @@ private:
 class SequenceAutoChanger : public SequenceGenerator
 {
 public:
+    SequenceAutoChanger() : SequenceGenerator()
+    {
+        init();
+    }
+
     SequenceAutoChanger(TriggerInterface *pTrigger) : SequenceGenerator(pTrigger)
+    {
+        init();
+    }
+
+    void init()
     {
         _changeBar = 16;
         _changeStart = 0;
