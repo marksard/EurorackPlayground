@@ -23,6 +23,7 @@
 #include "../../commonlib/common/SyncInTrigger.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
 #include "../../commonlib/common/SequenceGenerator.hpp"
+#include "../../commonlib/common/MIDIClockTriggerEvent.hpp"
 #include "ResonantFilterEx.hpp"
 #include "Oscillator.hpp"
 #include "EEPROMData.h"
@@ -44,13 +45,17 @@ static RecieveGateOct rgo;
 static Overdrive overDrive;
 // static Overdrive limitter;
 static SendRecvMIDI rm(Serial2, 1);
-static PollingTimeEvent sit;
 // static SyncInTrigger sit(GATE_PIN);
-static SequenceAutoChanger seqGen(&sit);
+static MIDIClockTriggerEvent midiTrigger(Serial2);
+static PollingTimeEvent pollingTrigger;
+static SequenceAutoChanger seqGen;
 static byte envFltStep;
 static byte envAmpStep;
 static int8_t lfo01Step = 0;
 static int8_t lfo02Step = 0;
+
+static int16_t sequencerVoltage = 0;
+static float voltPerTone = 4096.0 / 12.0 / 5.0;
 
 UserConfig conf;
 SynthPatch patch;
@@ -120,17 +125,22 @@ void recieveMIDI()
     {
         if (rm.isNoteOn())
         {
+            if (conf.cvOutMode) digitalWrite(GATE_PIN, HIGH);
             envFlt.noteOn();
             envAmp.noteOn();
         }
         if (rm.isNoteOff())
         {
+            if (conf.cvOutMode) digitalWrite(GATE_PIN, LOW);
             envFlt.noteOff();
             envAmp.noteOff();
         }
     }
 
     byte lastNote = rm.getNote();
+    if (conf.cvOutMode) {
+        sequencerVoltage = lastNote * voltPerTone;
+    }
     osc.setFreq_Q16n16(Oscillator::Select::OSC01, lastNote, patch.osc01_octfull, patch.osc01_detune);
     int add = patch.osc02_detune + AMOUNT((int)lfo01Step, patch.lfo01_amt_osc02, 8);
     osc.setFreq_Q16n16(Oscillator::Select::OSC02, lastNote, patch.osc02_octfull, add);
@@ -146,25 +156,10 @@ void randomSequencer()
     {
         seqGen.generate();
         seqChange = 0;
+        ppqCount = 24;
     }
 
-    if (seqGen.ready())
-    {
-        rm.sendClock();
-        if (conf.sendSync)
-        {
-            ppqCount++;
-            if (ppqCount / (24 / conf.seqPpq))
-            {
-                digitalWrite(GATE_PIN, HIGH);
-                ppqCount = 0;
-            }
-            else
-                digitalWrite(GATE_PIN, LOW);
-        }
-    }
-
-    if (!seqStart)
+    if (!seqStart && !seqGen.isStart())
     {
         ppqCount = 24;
         digitalWrite(GATE_PIN, LOW);
@@ -175,12 +170,47 @@ void randomSequencer()
         return;
     }
 
+    if (seqGen.ready())
+    {
+        // rm.sendClock();
+        if (conf.sendSync)
+        {
+            ppqCount++;
+            if (ppqCount / (24 / conf.seqPpq))
+            {
+                if (conf.cvOutMode) {
+                    if (seqGen.isNoteOn())
+                    {
+                        digitalWrite(GATE_PIN, LOW);
+                        digitalWrite(VOCT_PIN, LOW);
+                    }
+                }
+                else
+                {
+                    digitalWrite(GATE_PIN, HIGH);
+                }
+                ppqCount = 0;
+            }
+            else
+            {
+                if (!conf.cvOutMode) {
+                    digitalWrite(GATE_PIN, LOW);
+                }
+            }
+        }
+    }
+
     if (seqGen.seqReady())
     {
 
         lastNote = seqGen.getNote();
         if (seqGen.isNoteOn())
         {
+            if (conf.cvOutMode) 
+            {
+                digitalWrite(GATE_PIN, HIGH);
+                digitalWrite(VOCT_PIN, seqGen.getAcc() ? HIGH : LOW);
+            }
             envFlt.noteOn();
             envAmp.noteOn();
             rm.noteOff();
@@ -188,6 +218,11 @@ void randomSequencer()
         }
         else if (seqGen.isNoteOff())
         {
+            if (conf.cvOutMode)
+            {
+                digitalWrite(GATE_PIN, LOW);
+                digitalWrite(VOCT_PIN, LOW);
+            }
             envFlt.noteOff();
             envAmp.noteOff();
             envAmp.setSustainTime(getSustainTime(patch.envAmp_decay));
@@ -201,6 +236,10 @@ void randomSequencer()
             envFlt.setSustainTime(getSustainTime(patch.envFlt_decay, 2));
         }
         seqGen.next();
+    }
+
+    if (conf.cvOutMode) {
+        sequencerVoltage = lastNote * voltPerTone;
     }
 
     osc.setFreq_Q16n16(Oscillator::Select::OSC01, lastNote, patch.osc01_octfull, patch.osc01_detune);
@@ -219,6 +258,10 @@ void initSynth()
 
     analogReadResolution(POTS_BIT);
     rgo.init(GATE_PIN, VOCT_PIN);
+    pinMode(VOCT_PIN, conf.cvOutMode == 0 ? INPUT : OUTPUT);
+
+    // seqGen.setTrigger(&midiTrigger);
+    seqGen.setTrigger(&pollingTrigger);
 
     initController();
 
@@ -247,6 +290,17 @@ void updateSynth()
     {
         if (changed)
         {
+            pinMode(VOCT_PIN, conf.cvOutMode == 0 ? INPUT : OUTPUT);
+            if (conf.syncMidi)
+            {
+                seqGen.stop();
+                seqGen.setTrigger(&midiTrigger);
+            }
+            else
+            {
+                seqGen.stop();
+                seqGen.setTrigger(&pollingTrigger);
+            }
             seqGen.setTestMode(testtone);
             seqGen.setBPM(conf.seqBPM, 24);
             seqGen.setEndStep(conf.seqMaxStep);
@@ -344,7 +398,16 @@ AudioOutput_t updateAudio()
     byte bit = patch.driveLevel >= 7 ? 11 : patch.driveLevel >= 5 ? 12 : patch.driveLevel >= 2 ? 13 : 14;
     if (patch.hardClip)
         bit -= 1;
-    return MonoOutput::fromAlmostNBit(bit, sound).clip();
+
+    if (conf.cvOutMode) {
+        AudioOutput_t readValue = (sequencerVoltage >> 1) - AUDIO_BIAS;
+        return readValue;
+    }
+    else
+    {
+        // RP2040だとpwm出力11bit幅(0-2048)に調整
+        return MonoOutput::fromAlmostNBit(bit, sound).clip();
+    }
 }
 
 void synthHook()

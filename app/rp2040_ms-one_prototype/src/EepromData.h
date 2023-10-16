@@ -19,7 +19,7 @@ void initEEPROM()
 }
 
 // 設定値系
-const static char *UI_VER = "ms01conf_001\0";
+const static char *UI_VER = "ms01conf_003\0";
 struct UserConfig
 {
     char ver[14];
@@ -33,10 +33,12 @@ struct UserConfig
     byte setVOctCalibration;
     byte autoChange;
     byte autoChangeBar;
+    byte cvOutMode;
+    byte syncMidi;
 };
 
 // 操作系パラメータ現在値
-const static char *PARAM_VER = "ms01param001\0";
+const static char *PARAM_VER = "ms01param003\0";
 struct SynthPatch
 {
     char ver[14];
@@ -101,6 +103,8 @@ void initUserConfig(UserConfig *pUserConfig)
     pUserConfig->setVOctCalibration = 100;
     pUserConfig->autoChange = 0;
     pUserConfig->autoChangeBar = 8;
+    pUserConfig->cvOutMode = 0;
+    pUserConfig->syncMidi = 0;
 }
 
 void loadUserConfig(UserConfig *pUserConfig)

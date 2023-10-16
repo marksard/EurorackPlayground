@@ -62,7 +62,7 @@ static const char *names[MENUMAX][6] =
     {"Amp Env", "attack", "decay", "release", "", ""},
     {"LFO    ", "rate", "->freq", "->osc", "", ""},
     {"Delay  ", "feedback", "time", "level", "", ""},
-    {"Option ", "", "env free", "plymode", "", " save"},
+    {"Option ", "sync mid", "env free", "plymode", "cv", " save"},
     {"Patch  ", "", "", "slot", " load", " save"},
     {"Bar Chg", "ppq", "testtone", "bar", "enable", " sync"},
     {"Gen Seq", "scale", "step", "BPM", "change", " play"},
@@ -127,10 +127,10 @@ static byte *values[MENUMAX][5][4] =
         {&nullItem, &min_zero, &min_zero, &mode0},
     },
     {
-        {&nullItem, &min_zero, &min_zero, &mode0},
+        {&conf.syncMidi, &min_zero, &min_one, &mode0},
         {&envAmpFree, &min_zero, &min_one, &mode0},
         {&conf.inputOctVorMIDI, &min_zero, &max_two, &mode4},
-        {&userConfigSave, &min_zero, &min_one, &mode0},
+        {&conf.cvOutMode, &min_zero, &min_one, &mode0},
         {&userConfigSave, &min_zero, &min_one, &mode0},
     },
     {
