@@ -163,7 +163,7 @@ public:
     
     bool isStart()
     {
-        return _pTrigger->isStart();
+        return false;
     }
 
     /// @brief 次のステップに遷移
