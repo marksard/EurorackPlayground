@@ -291,16 +291,6 @@ void updateSynth()
         if (changed)
         {
             pinMode(VOCT_PIN, conf.cvOutMode == 0 ? INPUT : OUTPUT);
-            if (conf.syncMidi)
-            {
-                seqGen.stop();
-                seqGen.setTrigger(&midiTrigger);
-            }
-            else
-            {
-                seqGen.stop();
-                seqGen.setTrigger(&pollingTrigger);
-            }
             seqGen.setTestMode(testtone);
             seqGen.setBPM(conf.seqBPM, 24);
             seqGen.setEndStep(conf.seqMaxStep);
@@ -308,9 +298,25 @@ void updateSynth()
             seqGen.autoChanger(conf.autoChange);
             seqGen.setScale(conf.seqScale);
             if (seqStart)
+            {
                 seqGen.start();
-            else 
+            }
+            else
+            {
                 seqGen.stop();
+                if (conf.syncMidi)
+                {
+                    // seqGen.stop();
+                    midiTrigger.stop();
+                    seqGen.setTrigger(&midiTrigger);
+                }
+                else
+                {
+                    // seqGen.stop();
+                    pollingTrigger.stop();
+                    seqGen.setTrigger(&pollingTrigger);
+                }
+            }
         }
         randomSequencer();
     }
