@@ -65,38 +65,38 @@ const byte gateMap[MAX_TIMINGS][MAX_SEQ] PROGMEM = {
 
 // アクセントマップ
 const byte accMap[MAX_TIMINGS][MAX_SEQ] PROGMEM = {
-    {1, 0, 0, 0,
+    {1, 0, 1, 1,
      0, 0, 0, 1,
-     0, 0, 1, 0,
+     0, 0, 0, 0,
      0, 0, 0, 1,
      1, 0, 0, 0,
      0, 0, 0, 1,
-     0, 0, 1, 0,
+     1, 0, 1, 0,
      0, 0, 1, 0},
     {0, 1, 0, 0,
      1, 0, 0, 0,
      0, 0, 0, 1,
-     0, 0, 1, 0,
-     0, 1, 0, 0,
+     1, 0, 1, 0,
+     0, 1, 1, 0,
      1, 0, 0, 0,
      0, 0, 0, 1,
      0, 0, 1, 1},
     {0, 0, 1, 0,
      0, 1, 0, 0,
      1, 0, 0, 0,
+     0, 1, 1, 0,
      0, 0, 1, 0,
-     0, 0, 1, 0,
-     0, 1, 0, 0,
+     0, 1, 1, 0,
      1, 0, 0, 0,
      1, 0, 1, 0},
-    {0, 0, 0, 1,
-     0, 0, 1, 0,
+    {0, 1, 0, 1,
+     0, 0, 1, 1,
      0, 1, 0, 0,
      1, 0, 0, 0,
      0, 0, 0, 1,
-     0, 0, 1, 0,
+     0, 0, 1, 1,
      0, 1, 0, 0,
-     1, 0, 0, 1}};
+     1, 1, 0, 1}};
 
 class SequenceGenerator
 {
@@ -258,7 +258,8 @@ public:
         {
             // タイミングマップにランダムでタイミングをorして足す
             _gate[i] = (byte)pgm_read_byte(&gateMap[geteSelect][i]) | (random(2));
-            _acc[i] = (byte)pgm_read_byte(&accMap[veloSelect][i]) & (random(2));
+            // _acc[i] = (byte)pgm_read_byte(&accMap[veloSelect][i]) & (random(2));
+            _acc[i] = random(2);
 
             // 変更前のメロディーラインをランダムに残して繋がり関連性を持たせる
             if (random(2))
@@ -277,13 +278,15 @@ public:
         {
             byte lastOct = 0;
             byte lastGate = 0;
-            for (byte i = random(1, MAX_SEQ - 4); i < MAX_SEQ; ++i)
+            // for (byte i = random(1, MAX_SEQ - 4); i < MAX_SEQ; ++i)
+            for (byte i = 0; i < MAX_SEQ; ++i)
             {
                 // 1オクターブ離れていて、音が鳴る場合
-                if (abs(lastOct - _oct[i]) >= 12 && lastGate >= 1 && _gate[i] >= 1)
+                if (abs(lastOct - _oct[i]) >= 7 && lastGate >= 1 && _gate[i] >= 1)
                 {
                     // _acc[i - 1] = random(2); // acc
                     _gate[i] = 2; // スライド
+                    _acc[i] = random(2);
                     break;
                 }
 
@@ -299,8 +302,14 @@ public:
         // Serial.print("   ");
         // for (byte i = 0; i < MAX_SEQ; ++i)
         // {
-        //     Serial.print(_note[i]);
-        //     Serial.print(", ");
+        //     Serial.print((byte)pgm_read_byte(&scales[_scaleIndex][_note[i]]));
+        //     Serial.print(",");
+        // }
+        // Serial.print("   ");
+        // for (byte i = 0; i < MAX_SEQ; ++i)
+        // {
+        //     Serial.print(_oct[i]);
+        //     Serial.print(",");
         // }
         // Serial.println("");
     }
