@@ -56,13 +56,13 @@ public:
         return false;
     }
 
-    void setMills(int millSec) override {}
-    void setBPM(byte bpm, byte bpmReso) override {}
-
-    bool isStart()
+    bool isStart() override
     {
         return _isStart;
     }
+
+    void setMills(int millSec) override {}
+    void setBPM(byte bpm, byte bpmReso) override {}
 
 protected:
     using MidiTransport = MIDI_NAMESPACE::SerialMIDI<HardwareSerial>;

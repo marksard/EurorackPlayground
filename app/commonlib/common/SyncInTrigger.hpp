@@ -51,6 +51,11 @@ public:
         return result;
     }
 
+    bool isStart() override
+    {
+        return _start ? true : false;
+    }
+
     void setMills(int millSec) override
     {
 

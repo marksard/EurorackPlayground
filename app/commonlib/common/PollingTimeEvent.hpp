@@ -52,6 +52,11 @@ public:
         return false;
     }
 
+    bool isStart() override
+    {
+        return _start ? true : false;
+    }
+
     void setMills(int millSec) override
     {
         triggerTime = millSec;

@@ -151,6 +151,11 @@ public:
     {
         _pTrigger->stop();
     }
+    
+    bool isStart()
+    {
+        return _pTrigger->isStart();
+    }
 
     /// @brief 次のステップに遷移
     virtual void next()
