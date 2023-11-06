@@ -52,10 +52,11 @@ void initPWM()
 {
     gpio_set_function(OUT_A, GPIO_FUNC_PWM);
     uint potSlice = pwm_gpio_to_slice_num(OUT_A);
-    // 31.25kHz ビットは設定による
+    // 最速設定（可能な限り高い周波数にしてRCの値をあげることなく平滑な電圧を得たい）
+    // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
+    // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
     pwm_set_clkdiv(potSlice, 1);
-    // pwm_set_clkdiv(potSlice, 3.90625);
-    pwm_set_wrap(potSlice, PWM_RESO);
+    pwm_set_wrap(potSlice, PWM_RESO - 1);
     pwm_set_enabled(potSlice, true);
 }
 
@@ -82,7 +83,7 @@ void setup()
     Serial.begin(9600);
     // while (!Serial)
     // {
-    // } // Wait for serial port to connect (for Leonardo boards)
+    // }
     delay(500);
 
     sspc.testTone();
@@ -96,7 +97,7 @@ void loop()
 {
     int8_t enc0 = enc[0].getDirection(true);
     int8_t enc1 = enc[1].getDirection(true);
-    uint8_t step = map(pot[0].analogReadDirect(), 0, 4095, 0, 15);
+    uint8_t step = map(pot[0].analogRead(false), 0, 4090, 0, 15);
     uint8_t bpm = map(pot[1].analogRead(false), 0, 4096, 0, 255);
     sspc.setSettingPos(step);
     sspc.setBPM(bpm, 24);
