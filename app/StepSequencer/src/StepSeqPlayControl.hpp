@@ -72,6 +72,16 @@ public:
         _ssm.setKey(pos, note % 7);
     }
 
+    void moveLeftSeq()
+    {
+        _ssm.moveLeftSeq();
+    }
+
+    void moveRightSeq()
+    {
+        _ssm.moveRightSeq();
+    }
+
     void setPPQ() {}
     uint8_t getBPM() { return 0; }
     uint8_t getPPQ() { return 0; }

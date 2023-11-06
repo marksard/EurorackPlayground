@@ -48,6 +48,44 @@ void initArray(vs *pArray, vs size)
         pArray[i] = 0;
 }
 
+template <typename vs = int8_t>
+vs constrainCyclic(vs value, vs min, vs max)
+{
+    if (value > max)
+        return min;
+    if (value < min)
+        return max;
+    return value;
+}
+
+template <typename vs = uint8_t>
+void moveLeftArray(vs *pArray, vs size, bool left)
+{
+    vs max_m1 = size - 1;
+    if (left)
+    {
+        vs backValue = pArray[0];
+        for (vs i = 0; i < size; ++i)
+        {
+            vs destIndex = constrainCyclic(i + 1, 0, (int)max_m1);
+            vs dst = pArray[destIndex];
+            pArray[i] = dst;
+        }
+        pArray[max_m1] = backValue;
+    }
+    else
+    {
+        vs backValue = pArray[max_m1];
+        for (vs i = max_m1; i > 0; --i)
+        {
+            vs destIndex = constrainCyclic(i - 1, 0, (int)max_m1);
+            vs dst = pArray[destIndex];
+            pArray[i] = dst;
+        }
+        pArray[0] = backValue;
+    }
+}
+
 template <typename vs = uint8_t>
 void printArray(vs *pArray, vs size)
 {
@@ -219,6 +257,20 @@ public:
     uint8_t getPlayGate() { return _gates[gateStep.pos.get()]; }
 
     uint8_t getPlayNote() { return (getPlayOctave() * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
+
+    void moveLeftSeq()
+    {
+        moveLeftArray(_keys, MAX_STEP, true);
+        moveLeftArray(_octaves, MAX_STEP, true);
+        moveLeftArray((uint8_t*)_gates, MAX_STEP, true);
+    }
+
+    void moveRightSeq()
+    {
+        moveLeftArray(_keys, MAX_STEP, false);
+        moveLeftArray(_octaves, MAX_STEP, false);
+        moveLeftArray((uint8_t*)_gates, MAX_STEP, false);
+    }
 
     void printSeq()
     {

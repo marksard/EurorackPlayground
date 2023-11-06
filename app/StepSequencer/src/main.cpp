@@ -87,7 +87,7 @@ void setup()
     delay(500);
 
     sspc.testTone();
-    sspc.setBPM(64, 24);
+    sspc.setBPM(64, 48);
     sspc.start();
 
     add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
@@ -97,12 +97,22 @@ void loop()
 {
     int8_t enc0 = enc[0].getDirection(true);
     int8_t enc1 = enc[1].getDirection(true);
-    uint8_t step = map(pot[0].analogRead(false), 0, 4090, 0, 15);
+    uint8_t step = map(pot[0].analogRead(false), 0, 4040, 0, 15);
     uint8_t bpm = map(pot[1].analogRead(false), 0, 4096, 0, 255);
     sspc.setSettingPos(step);
-    sspc.setBPM(bpm, 24);
-    sspc.addGate(enc0);
-    sspc.addNote(enc1);
+    sspc.setBPM(bpm, 48);
+    // sspc.addGate(enc0);
+    // sspc.addNote(enc1);
+    if (enc0 >= 1)
+    {
+        sspc.moveRightSeq();
+        Serial.print("right");
+    }
+    else if (enc0 < 0)
+    {
+        sspc.moveLeftSeq();        
+        Serial.print("left");
+    }
 
     if (buttons[0].getState() == 2)
     {
@@ -124,5 +134,5 @@ void setup1()
 void loop1()
 {
     dispOLED();
-    sleep_ms(1);
+    sleep_ms(33);
 }
