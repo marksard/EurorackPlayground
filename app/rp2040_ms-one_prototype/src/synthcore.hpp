@@ -163,6 +163,7 @@ void randomSequencer()
     {
         ppqCount = 24;
         digitalWrite(GATE_PIN, LOW);
+        digitalWrite(VOCT_PIN, LOW);
         seqGen.resetSeq();
         envFlt.noteOff();
         envAmp.noteOff();
@@ -175,27 +176,24 @@ void randomSequencer()
         // rm.sendClock();
         if (conf.sendSync)
         {
+            byte ppqRate = (24 / conf.seqPpq);
+            byte ppqGateEnd = ppqRate / 2;
             ppqCount++;
-            if (ppqCount / (24 / conf.seqPpq))
+            if (ppqCount >= ppqRate)
             {
-                if (conf.cvOutMode) {
-                    if (seqGen.isNoteOn())
-                    {
-                        digitalWrite(GATE_PIN, LOW);
-                        digitalWrite(VOCT_PIN, LOW);
-                    }
-                }
-                else
-                {
-                    digitalWrite(GATE_PIN, HIGH);
-                }
+                digitalWrite(GATE_PIN, HIGH);
                 ppqCount = 0;
+            }
+            else if (ppqCount >= ppqGateEnd)
+            {
+                if (conf.cvOutMode && !seqGen.isSlide())
+                {
+                    digitalWrite(VOCT_PIN, LOW);
+                }
             }
             else
             {
-                if (!conf.cvOutMode) {
-                    digitalWrite(GATE_PIN, LOW);
-                }
+                digitalWrite(GATE_PIN, LOW);
             }
         }
     }
@@ -208,8 +206,7 @@ void randomSequencer()
         {
             if (conf.cvOutMode) 
             {
-                digitalWrite(GATE_PIN, HIGH);
-                digitalWrite(VOCT_PIN, seqGen.getAcc() ? HIGH : LOW);
+                digitalWrite(VOCT_PIN, HIGH);
             }
             envFlt.noteOn();
             envAmp.noteOn();
@@ -220,7 +217,6 @@ void randomSequencer()
         {
             if (conf.cvOutMode)
             {
-                digitalWrite(GATE_PIN, LOW);
                 digitalWrite(VOCT_PIN, LOW);
             }
             envFlt.noteOff();
@@ -258,7 +254,7 @@ void initSynth()
 
     analogReadResolution(POTS_BIT);
     rgo.init(GATE_PIN, VOCT_PIN);
-    pinMode(VOCT_PIN, conf.cvOutMode == 0 ? INPUT : OUTPUT);
+    pinMode(VOCT_PIN, conf.cvOutMode == 0 || conf.inputOctVorMIDI == 0 ? INPUT : OUTPUT);
 
     // seqGen.setTrigger(&midiTrigger);
     seqGen.setTrigger(&pollingTrigger);
@@ -271,6 +267,7 @@ void initSynth()
 void updateSynth()
 {
     static byte lastInputOctVorMIDI = 255;
+    static byte lastVOctPin = 0;
 
     // ユーザー操作系更新
     byte changed = updateUserIF();
@@ -279,6 +276,16 @@ void updateSynth()
     {
         lastInputOctVorMIDI = conf.inputOctVorMIDI;
         pinMode(GATE_PIN, lastInputOctVorMIDI == 0 ? INPUT : OUTPUT);
+    }
+
+    if (changed)
+    {
+        byte vOctPin = conf.cvOutMode == 0 && conf.inputOctVorMIDI == 0 ? INPUT : OUTPUT;
+        if (vOctPin != lastVOctPin)
+        {
+            lastVOctPin = vOctPin;
+            pinMode(VOCT_PIN, vOctPin);
+        }
     }
 
     // 入力端子、MIDI、シーケンサーからの入力受付、エンベロープとオシレータ周波数の更新
@@ -290,7 +297,6 @@ void updateSynth()
     {
         if (changed)
         {
-            pinMode(VOCT_PIN, conf.cvOutMode == 0 ? INPUT : OUTPUT);
             seqGen.setTestMode(testtone);
             seqGen.setBPM(conf.seqBPM, 24);
             seqGen.setEndStep(conf.seqMaxStep);
