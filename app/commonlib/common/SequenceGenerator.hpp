@@ -199,6 +199,13 @@ public:
         return _gate[_seqIndex] == 0;
     }
 
+    /// @brief ノートオフ状態
+    /// @return 1でノートOFF
+    byte isSlide()
+    {
+        return _gate[_seqIndex] >= 2;
+    }
+
     /// @brief ノート番号取得
     /// @return MIDIノート番号
     byte getNote()
@@ -299,7 +306,7 @@ public:
                 if (abs(lastOct - _oct[i]) >= 7 && lastGate >= 1 && _gate[i] >= 1)
                 {
                     // _acc[i - 1] = random(2); // acc
-                    _gate[i] = 2; // スライド
+                    // _gate[i] = 2; // スライド
                     _acc[i] = random(2);
                     break;
                 }
