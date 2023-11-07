@@ -86,7 +86,7 @@ void setup()
     // }
     delay(500);
 
-    sspc.testTone();
+    sspc.generateTestToneSequence();
     sspc.setBPM(64, 48);
     sspc.start();
 
@@ -105,22 +105,20 @@ void loop()
     // sspc.addNote(enc1);
     if (enc0 >= 1)
     {
-        sspc.moveRightSeq();
-        Serial.print("right");
+        sspc.moveSeqRight();
     }
     else if (enc0 < 0)
     {
-        sspc.moveLeftSeq();        
-        Serial.print("left");
+        sspc.moveSeqLeft();        
     }
 
     if (buttons[0].getState() == 2)
     {
-        sspc.test();
+        sspc.generateSequence();
     }
     if (buttons[1].getState() == 2)
     {
-        sspc.testChangeLength();
+        sspc.setLimitStepAtRandom();
     }
 
     sleep_ms(1);

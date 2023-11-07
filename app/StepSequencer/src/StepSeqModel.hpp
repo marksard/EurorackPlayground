@@ -59,34 +59,6 @@ vs constrainCyclic(vs value, vs min, vs max)
 }
 
 template <typename vs = uint8_t>
-void moveLeftArray(vs *pArray, vs size, bool left)
-{
-    vs max_m1 = size - 1;
-    if (left)
-    {
-        vs backValue = pArray[0];
-        for (vs i = 0; i < size; ++i)
-        {
-            vs destIndex = constrainCyclic(i + 1, 0, (int)max_m1);
-            vs dst = pArray[destIndex];
-            pArray[i] = dst;
-        }
-        pArray[max_m1] = backValue;
-    }
-    else
-    {
-        vs backValue = pArray[max_m1];
-        for (vs i = max_m1; i > 0; --i)
-        {
-            vs destIndex = constrainCyclic(i - 1, 0, (int)max_m1);
-            vs dst = pArray[destIndex];
-            pArray[i] = dst;
-        }
-        pArray[0] = backValue;
-    }
-}
-
-template <typename vs = uint8_t>
 void printArray(vs *pArray, vs size)
 {
     for (vs i = 0; i < size; ++i)
@@ -236,6 +208,12 @@ public:
         Max,
     };
 
+    enum SeqMove
+    {
+        LEFT,
+        RIGHT,
+    };
+
 public:
     StepSeqModel() : _scaleIndex(MAX_SCALES, 0, MAX_SCALES)
     {
@@ -258,18 +236,41 @@ public:
 
     uint8_t getPlayNote() { return (getPlayOctave() * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
 
-    void moveLeftSeq()
-    {
-        moveLeftArray(_keys, MAX_STEP, true);
-        moveLeftArray(_octaves, MAX_STEP, true);
-        moveLeftArray((uint8_t*)_gates, MAX_STEP, true);
-    }
 
-    void moveRightSeq()
+    void moveSeq(SeqMove move)
     {
-        moveLeftArray(_keys, MAX_STEP, false);
-        moveLeftArray(_octaves, MAX_STEP, false);
-        moveLeftArray((uint8_t*)_gates, MAX_STEP, false);
+        if (move == SeqMove::LEFT)
+        {
+            uint8_t backKey = _keys[0];
+            uint8_t backOct = _octaves[0];
+            Gate backGate = _gates[0];
+            for (uint8_t i = 0; i < MAX_STEP; ++i)
+            {
+                uint8_t destIndex = constrainCyclic(i + 1, 0, (int)MAX_STEP_M1);
+                _keys[i] = _keys[destIndex];
+                _octaves[i] = _octaves[destIndex];
+                _gates[i] = _gates[destIndex];
+            }
+            _keys[MAX_STEP_M1] = backKey;
+            _octaves[MAX_STEP_M1] = backOct;
+            _gates[MAX_STEP_M1] = backGate;
+        }
+        else
+        {
+            uint8_t backKey = _keys[MAX_STEP_M1];
+            uint8_t backOct = _octaves[MAX_STEP_M1];
+            Gate backGate = _gates[MAX_STEP_M1];
+            for (uint8_t i = MAX_STEP_M1; i > 0; --i)
+            {
+                uint8_t destIndex = constrainCyclic(i - 1, 0, (int)MAX_STEP_M1);
+                _keys[i] = _keys[destIndex];
+                _octaves[i] = _octaves[destIndex];
+                _gates[i] = _gates[destIndex];
+            }
+            _keys[0] = backKey;
+            _octaves[0] = backOct;
+            _gates[0] = backGate;
+        }
     }
 
     void printSeq()
@@ -326,7 +327,9 @@ void generateSequence(StepSeqModel *pssm)
     for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
     {
         // タイミングマップにランダムでタイミングをorして足す
-        StepSeqModel::Gate gate = gateMap[geteSelect][i] == 1 ? (StepSeqModel::Gate)random(StepSeqModel::Gate::S, StepSeqModel::Gate::Max) : StepSeqModel::Gate::_;
+        StepSeqModel::Gate gate = gateMap[geteSelect][i] == 1 ? 
+        (StepSeqModel::Gate)random(StepSeqModel::Gate::S, StepSeqModel::Gate::Max) : 
+        StepSeqModel::Gate::_;
         pssm->setGate(i, gate);
 
         // 変更前のメロディーラインをランダムに残して繋がりを持たせる

@@ -72,14 +72,14 @@ public:
         _ssm.setKey(pos, note % 7);
     }
 
-    void moveLeftSeq()
+    void moveSeqLeft()
     {
-        _ssm.moveLeftSeq();
+        _ssm.moveSeq(StepSeqModel::SeqMove::LEFT);
     }
 
-    void moveRightSeq()
+    void moveSeqRight()
     {
-        _ssm.moveRightSeq();
+        _ssm.moveSeq(StepSeqModel::SeqMove::RIGHT);
     }
 
     void setPPQ() {}
@@ -143,15 +143,15 @@ public:
         _ssv.dispSettingPos(_settingPos.get());
     }
 
-    void testTone()
+    void generateTestToneSequence()
     {
-        generateTestToneSequence(&_ssm);
+        ::generateTestToneSequence(&_ssm);
     }
 
-    void test()
+    void generateSequence()
     {
         _seqReadyCount = 0;
-        generateSequence(&_ssm);
+        ::generateSequence(&_ssm);
         _ssm.keyStep.SetMode(Step::Mode::Forward);
         _ssm.gateStep.SetMode(Step::Mode::Forward);
         _ssm.keyStep.pos.setLimit(0, 16);
@@ -161,8 +161,10 @@ public:
         _ssm.printSeq();
     }
 
-    void testChangeLength()
+    void setLimitStepAtRandom()
     {
+        _ssm.keyStep.ResetPlayStep();
+        _ssm.gateStep.ResetPlayStep();
         _ssm.keyStep.pos.setLimit(random(0, 3), random(4, 16));
         _ssm.gateStep.pos.setLimit(random(0, 3), random(4, 16));
         _ssm.keyStep.SetMode((Step::Mode)random((long)Step::Mode::Max));
