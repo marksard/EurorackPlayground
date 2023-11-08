@@ -4,7 +4,7 @@
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
- */ 
+ */
 
 #pragma once
 
@@ -22,7 +22,8 @@ public:
 
     void start() override
     {
-        if(_start)return;
+        if (_start)
+            return;
         _lastMillis = millis();
         _start = 1;
     }
@@ -35,7 +36,8 @@ public:
 
     bool ready() override
     {
-        if (!_start) return false;
+        if (!_start)
+            return false;
 
         uint32_t now = millis();
         if ((int)(now - _lastMillis) >= triggerTime)
@@ -64,11 +66,17 @@ public:
 
     void setBPM(byte bpm, byte bpmReso) override
     {
+        if (_bpm == bpm)
+            return;
+        _bpm = bpm;
         triggerTime = (int)((60.0 / (bpm * bpmReso)) * 1000.0);
     }
 
+    byte getBPM() { return _bpm; }
+
 private:
     byte _start;
+    byte _bpm;
     int triggerTime;
     uint32_t _lastMillis;
 };

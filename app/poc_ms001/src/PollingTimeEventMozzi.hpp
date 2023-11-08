@@ -45,11 +45,17 @@ public:
 
     void setBPM(byte bpm, byte bpmReso) override
     {
+        if (_bpm == bpm)
+            return;
+        _bpm = bpm;
         int triggerTime = (int)((60.0 / (bpm * bpmReso)) * 1000.0);
         _ed.set(triggerTime);
     }
+    void setBPM(byte bpm, byte bpmReso) override { _bpm = bpm; }
+    byte getBPM() { return _bpm; }
 
 private:
     EventDelay _ed;
     byte _start;
+    byte _bpm;
 };

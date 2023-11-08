@@ -21,7 +21,7 @@ public:
 
     void start() override
     {
-        if(midiInterface.getInputChannel() == 0)
+        if (midiInterface.getInputChannel() == 0)
             midiInterface.begin(1);
     }
 
@@ -29,7 +29,7 @@ public:
 
     bool ready() override
     {
-        if(!midiInterface.read())
+        if (!midiInterface.read())
         {
             return false;
         }
@@ -50,7 +50,8 @@ public:
         {
             if (_isStart)
                 return true;
-            else return false;
+            else
+                return false;
         }
 
         return false;
@@ -62,7 +63,8 @@ public:
     }
 
     void setMills(int millSec) override {}
-    void setBPM(byte bpm, byte bpmReso) override {}
+    void setBPM(byte bpm, byte bpmReso) override { _bpm = bpm; }
+    byte getBPM() { return _bpm; }
 
 protected:
     using MidiTransport = MIDI_NAMESPACE::SerialMIDI<HardwareSerial>;
@@ -72,4 +74,5 @@ protected:
     MidiInterface midiInterface;
 
     bool _isStart = false;
+    byte _bpm;
 };

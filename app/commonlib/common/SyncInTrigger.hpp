@@ -56,15 +56,9 @@ public:
         return _start ? true : false;
     }
 
-    void setMills(int millSec) override
-    {
-
-    }
-
-    void setBPM(byte bpm, byte bpmReso) override
-    {
-
-    }
+    void setMills(int millSec) override {}
+    void setBPM(byte bpm, byte bpmReso) override { _bpm = bpm; }
+    byte getBPM() { return _bpm; }
 
     void setPin(byte pin)
     {
@@ -74,6 +68,7 @@ public:
 protected:
     byte _start;
     byte _pin;
+    byte _bpm;
 
     /// @brief ピン値読込
     /// @return
