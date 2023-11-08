@@ -3,7 +3,7 @@
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
- */ 
+ */
 
 #pragma once
 
@@ -14,7 +14,7 @@ class SyncInTrigger : public TriggerInterface
 {
 public:
     SyncInTrigger(byte pin)
-    : SyncInTrigger()
+        : SyncInTrigger()
     {
         setPin(pin);
     }
@@ -37,7 +37,8 @@ public:
 
     bool ready() override
     {
-        if (!_start) return false;
+        if (!_start)
+            return false;
 
         static byte valueOld = 0;
         bool result = false;
@@ -57,8 +58,17 @@ public:
     }
 
     void setMills(int millSec) override {}
-    void setBPM(byte bpm, byte bpmReso) override { _bpm = bpm; }
-    byte getBPM() { return _bpm; }
+    bool setBPM(byte bpm, byte bpmReso) override
+    {
+        if (_bpm == bpm && _bpmReso == bpmReso)
+            return false;
+        _bpm = bpm;
+        _bpmReso = bpmReso;
+        return true;
+    }
+    bool setBPM(byte bpm) override { return setBPM(bpm, _bpmReso); }
+    byte getBPM() override { return _bpm; }
+    byte getBPMReso() override { return _bpmReso; }
 
     void setPin(byte pin)
     {
@@ -69,6 +79,7 @@ protected:
     byte _start;
     byte _pin;
     byte _bpm;
+    byte _bpmReso;
 
     /// @brief ピン値読込
     /// @return

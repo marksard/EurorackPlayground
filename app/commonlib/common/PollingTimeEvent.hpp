@@ -64,19 +64,24 @@ public:
         triggerTime = millSec;
     }
 
-    void setBPM(byte bpm, byte bpmReso) override
+    bool setBPM(byte bpm, byte bpmReso) override
     {
-        if (_bpm == bpm)
-            return;
+        if (_bpm == bpm && _bpmReso == bpmReso)
+            return false;
         _bpm = bpm;
+        _bpmReso = bpmReso;
         triggerTime = (int)((60.0 / (bpm * bpmReso)) * 1000.0);
+        return true;
     }
 
-    byte getBPM() { return _bpm; }
+    bool setBPM(byte bpm) override { return setBPM(bpm, _bpmReso); }
+    byte getBPM() override { return _bpm; }
+    byte getBPMReso() override { return _bpmReso; }
 
 private:
     byte _start;
     byte _bpm;
+    byte _bpmReso;
     int triggerTime;
     uint32_t _lastMillis;
 };

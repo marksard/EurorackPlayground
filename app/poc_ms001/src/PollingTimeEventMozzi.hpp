@@ -43,19 +43,23 @@ public:
         _ed.set(millSec);
     }
 
-    void setBPM(byte bpm, byte bpmReso) override
+    bool setBPM(byte bpm, byte bpmReso) override
     {
-        if (_bpm == bpm)
-            return;
+        if (_bpm == bpm && _bpmReso == bpmReso)
+            return false;
         _bpm = bpm;
+        _bpmReso = bpmReso;
         int triggerTime = (int)((60.0 / (bpm * bpmReso)) * 1000.0);
         _ed.set(triggerTime);
+        return true;
     }
-    void setBPM(byte bpm, byte bpmReso) override { _bpm = bpm; }
-    byte getBPM() { return _bpm; }
+    bool setBPM(byte bpm) override { return setBPM(bpm, _bpmReso); }
+    byte getBPM() override { return _bpm; }
+    byte getBPMReso() override { return _bpmReso; }
 
 private:
     EventDelay _ed;
     byte _start;
     byte _bpm;
+    byte _bpmReso;
 };

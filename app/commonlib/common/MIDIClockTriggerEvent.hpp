@@ -63,8 +63,17 @@ public:
     }
 
     void setMills(int millSec) override {}
-    void setBPM(byte bpm, byte bpmReso) override { _bpm = bpm; }
-    byte getBPM() { return _bpm; }
+    bool setBPM(byte bpm, byte bpmReso) override
+    {
+        if (_bpm == bpm && _bpmReso == bpmReso)
+            return false;
+        _bpm = bpm;
+        _bpmReso = bpmReso;
+        return true;
+    }
+    bool setBPM(byte bpm) override { return setBPM(bpm, _bpmReso); }
+    byte getBPM() override { return _bpm; }
+    byte getBPMReso() override { return _bpmReso; }
 
 protected:
     using MidiTransport = MIDI_NAMESPACE::SerialMIDI<HardwareSerial>;
@@ -75,4 +84,5 @@ protected:
 
     bool _isStart = false;
     byte _bpm;
+    byte _bpmReso;
 };
