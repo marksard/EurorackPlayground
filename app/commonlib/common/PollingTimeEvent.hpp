@@ -24,13 +24,13 @@ public:
     {
         if (_start)
             return;
-        _lastMillis = millis();
+        _lastMicros = micros();
         _start = 1;
     }
 
     void stop() override
     {
-        _lastMillis = millis();
+        _lastMicros = micros();
         _start = 0;
     }
 
@@ -39,15 +39,13 @@ public:
         if (!_start)
             return false;
 
-        uint32_t now = millis();
-        if ((int)(now - _lastMillis) >= triggerTime)
+        long now = micros();
+        if ((now - _lastMicros) >= triggerTime)
         {
-            // Serial.print(_lastMillis);
-            // Serial.print(",");
-            // Serial.print(now);
+            // Serial.print(now - _lastMicros);
             // Serial.print(",");
             // Serial.println(triggerTime);
-            _lastMillis = now;
+            _lastMicros = now;
             return true;
         }
 
@@ -70,7 +68,12 @@ public:
             return false;
         _bpm = bpm;
         _bpmReso = bpmReso;
-        triggerTime = (int)((60.0 / (bpm * bpmReso)) * 1000.0);
+        triggerTime = (int)((60.0 / (bpm * bpmReso)) * 1000000.0);
+        // Serial.print(bpm);
+        // Serial.print(",");
+        // Serial.print(triggerTime);
+        // Serial.print(",");
+        // Serial.println();
         return true;
     }
 
@@ -83,5 +86,5 @@ private:
     byte _bpm;
     byte _bpmReso;
     int triggerTime;
-    uint32_t _lastMillis;
+    long _lastMicros;
 };

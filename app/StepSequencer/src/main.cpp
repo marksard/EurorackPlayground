@@ -8,7 +8,7 @@
 #include "StepSeqView.hpp"
 #include "StepSeqPlayControl.hpp"
 
-#define TIMER_INTR_TM 2400 // us == 400Hz (1/(60sec/(250BPM*96PPQ))
+#define TIMER_INTR_TM 62 // us == 16kHz (1/(60sec/(250BPM*3840ticks))
 static repeating_timer timer;
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
@@ -20,6 +20,7 @@ static int8_t menuIndex = 0;
 
 #define OUT_A D0
 #define GATE_A A3
+#define GATE_B A2
 #define PWM_RESO 4096
 
 #define ENC0A 2
@@ -135,6 +136,7 @@ void initPWM()
     // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
     // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
     pwm_set_clkdiv(potSlice, 1);
+    // pwm_set_clkdiv(potSlice, 125000000.0 / (PWM_RESO * 10000.0));
     pwm_set_wrap(potSlice, PWM_RESO - 1);
     pwm_set_enabled(potSlice, true);
 }
@@ -142,6 +144,9 @@ void initPWM()
 bool intrTimer(struct repeating_timer *t)
 {
     sspc.updateProcedure();
+    // static byte a = 0;
+    // a = (a + 1)&1;
+    // gpio_put(A2, a ? HIGH : LOW);
     return true;
 }
 
@@ -150,6 +155,7 @@ void setup()
     analogReadResolution(12);
 
     pinMode(GATE_A, OUTPUT);
+    pinMode(GATE_B, OUTPUT);
     enc[0].init(ENC0A, ENC0B);
     enc[1].init(ENC1A, ENC1B);
     pot[0].init(POT0);
@@ -166,7 +172,7 @@ void setup()
     delay(500);
 
     sspc.generateTestToneSequence();
-    sspc.setBPM(128, 96);
+    sspc.setBPM(128, 48);
     sspc.start();
 
     add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
