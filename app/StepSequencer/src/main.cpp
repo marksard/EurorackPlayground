@@ -8,7 +8,7 @@
 #include "StepSeqView.hpp"
 #include "StepSeqPlayControl.hpp"
 
-#define TIMER_INTR_TM 2400      // us == 400Hz (1/(60sec/(250BPM*96PPQ))
+#define TIMER_INTR_TM 2400 // us == 400Hz (1/(60sec/(250BPM*96PPQ))
 static repeating_timer timer;
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
@@ -16,6 +16,7 @@ static StepSeqPlayControl sspc(&u8g2);
 static Button buttons[2];
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
+static int8_t menuIndex = 0;
 
 #define OUT_A D0
 #define GATE_A A3
@@ -33,18 +34,74 @@ static RotaryEncoder enc[2];
 void initOLED()
 {
     u8g2.begin();
-    u8g2.setFont(u8g2_font_5x8_tf);
     u8g2.setContrast(40);
     u8g2.setFontPosTop();
     u8g2.setDrawColor(2);
     //   u8g2.setFlipMode(1);
 }
 
-
 void dispOLED()
 {
     u8g2.clearBuffer();
+
+    u8g2.setFont(u8g2_font_7x14B_tf);
+    switch (menuIndex)
+    {
+    case 0:
+        u8g2.drawStr(0, 2, "KEY EDT");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>KEY");
+        u8g2.drawStr(52, 8, "E2>GATE");
+        break;
+    case 1:
+        u8g2.drawStr(0, 2, "SEQ RND");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>SEQ");
+        u8g2.drawStr(52, 8, "E2>RNG");
+        break;
+    case 2:
+        u8g2.drawStr(0, 2, "SEQ MOV");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>MOV");
+        u8g2.drawStr(52, 8, "E2>---");
+        break;
+    case 3:
+        u8g2.drawStr(0, 2, "RNG GT");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>STR");
+        u8g2.drawStr(52, 8, "E2>END");
+        break;
+    case 4:
+        u8g2.drawStr(0, 2, "RNG KEY");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>STR");
+        u8g2.drawStr(52, 8, "E2>END");
+        break;
+    case 5:
+        u8g2.drawStr(0, 2, "DIR PLY");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>SEQ");
+        u8g2.drawStr(52, 8, "E2>RNG");
+        break;
+    case 6:
+        u8g2.drawStr(0, 2, "PLY/STP");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>PLY");
+        u8g2.drawStr(52, 8, "E2>RST");
+        break;
+    default:
+        u8g2.setFont(u8g2_font_5x8_tf);
+        break;
+    }
+
+    static char disp_buf[20] = {0};
+    sprintf(disp_buf, "%s>%03d", "BPM", sspc.getBPM());
+    u8g2.drawStr(92, 0, disp_buf);
+    sprintf(disp_buf, "%s>%03d", "PPQ", sspc.getPPQ());
+    u8g2.drawStr(92, 8, disp_buf);
+
     sspc.updateDisplay();
+
     u8g2.sendBuffer();
 }
 
@@ -97,28 +154,65 @@ void loop()
 {
     int8_t enc0 = enc[0].getDirection(true);
     int8_t enc1 = enc[1].getDirection(true);
-    uint8_t step = map(pot[0].analogRead(false), 0, 4040, 0, 15);
-    uint8_t bpm = map(pot[1].analogRead(false), 0, 4096, 0, 255);
-    sspc.setSettingPos(step);
-    sspc.setBPM(bpm, 48);
-    // sspc.addGate(enc0);
-    // sspc.addNote(enc1);
-    if (enc0 >= 1)
-    {
-        sspc.moveSeqRight();
-    }
-    else if (enc0 < 0)
-    {
-        sspc.moveSeqLeft();        
-    }
+    uint16_t pot0 = pot[0].analogRead(false);
+    uint16_t pot1 = pot[1].analogRead(false);
 
     if (buttons[0].getState() == 2)
     {
-        sspc.generateSequence();
+        menuIndex = constrainCyclic(menuIndex - 1, 0, 6);
     }
     if (buttons[1].getState() == 2)
     {
-        sspc.setLimitStepAtRandom();
+        menuIndex = constrainCyclic(menuIndex + 1, 0, 6);
+    }
+
+    switch (menuIndex)
+    {
+    case 0:
+    {
+        uint8_t step = map(pot0, 0, 4040, 0, 15);
+        uint8_t bpm = map(pot1, 0, 4040, 0, 255);
+        sspc.setSettingPos(step);
+        sspc.setBPM(bpm, 48);
+        sspc.addNote(enc0);
+        sspc.addGate(enc1);
+    }
+    break;
+    case 1:
+        if (enc0 != 0)
+            sspc.generateSequence();
+        if (enc1 != 0)
+            sspc.setLimitStepAtRandom();
+        break;
+    case 2:
+        sspc.moveSeq(enc0);
+        break;
+    case 3:
+        sspc.addGateLimit(enc0, enc1);
+        break;
+    case 4:
+        sspc.addKeyLimit(enc0, enc1);
+        break;
+    case 5:
+        sspc.addKeyStepMode(enc0);
+        sspc.addGateStepMode(enc1);
+        break;
+    case 6:
+        if (enc0 >= 1)
+        {
+            sspc.start();
+        }
+        else if (enc0 < 0)
+        {
+            sspc.stop();
+        }
+        if (enc1 >= 1)
+        {
+            sspc.reset();
+        }
+        break;
+    default:
+        break;
     }
 
     sleep_ms(1);

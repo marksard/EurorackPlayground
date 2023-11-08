@@ -130,7 +130,7 @@ public:
     {
     }
 
-    void NextPlayStep()
+    void nextPlayStep()
     {
         if (_mode == Mode::Forward)
         {
@@ -162,7 +162,7 @@ public:
         }
     }
 
-    void ResetPlayStep()
+    void resetPlayStep()
     {
         if (_mode == Mode::Forward)
         {
@@ -181,9 +181,14 @@ public:
         }
     }
 
-    void SetMode(Mode mode) { _mode = mode; }
-    uint8_t GetMode() { return _mode; }
-    uint8_t GetPlayCount() { return _playCount; }
+    void addMode(int8_t value)
+    {
+        _mode = (Mode)constrain((Mode)_mode + value, Mode::Forward, Mode::TurnBack);
+    }
+
+    void setMode(Mode mode) { _mode = mode; }
+    uint8_t getMode() { return _mode; }
+    uint8_t getPlayCount() { return _playCount; }
 
 public:
     LimitValue<int8_t> pos;
@@ -302,8 +307,8 @@ public:
             Serial.print(getPlayNote());
             Serial.print(", ");
             Serial.println();
-            keyStep.NextPlayStep();
-            gateStep.NextPlayStep();
+            keyStep.nextPlayStep();
+            gateStep.nextPlayStep();
         }
     }
 

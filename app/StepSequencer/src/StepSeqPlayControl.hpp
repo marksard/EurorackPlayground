@@ -20,6 +20,8 @@ public:
         _seqReadyCount = 0;
         _seqReadyCountMax = 0;
         _seqGateOffStep = 0;
+        _bpm = 0;
+        _ppq = 0;
     }
 
     void start()
@@ -32,6 +34,12 @@ public:
         _pTrigger->stop();
     }
 
+    void reset()
+    {
+        _ssm.keyStep.resetPlayStep();
+        _ssm.gateStep.resetPlayStep();
+    }
+
     void setSyncMode()
     {
         bool result = _pTrigger->ready();
@@ -42,11 +50,16 @@ public:
 
     void setBPM(byte bpm, byte bpmReso)
     {
+        _bpm = bpm;
         /// 解像度：16ビート
         _pTrigger->setBPM(bpm, bpmReso);
         _seqReadyCountMax = bpmReso / 4;
         _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
     }
+
+    void setPPQ() {}
+    uint8_t getBPM() { return _bpm; }
+    uint8_t getPPQ() { return _ppq; }
 
     void setSettingPos(int8_t value)
     {
@@ -65,26 +78,40 @@ public:
     void addNote(int8_t value)
     {
         uint8_t pos = _settingPos.get();
-        uint8_t currentOct = _ssm.getOctave(pos) * 7;
+        uint8_t currentOct = _ssm.getOctave(pos) * MAX_SCALE_KEY;
         uint8_t currentKey = _ssm.getKey(pos);
-        int8_t note = constrain((int8_t)(currentOct + currentKey + value), 0, 40);
-        _ssm.setOctave(pos, note / 7);
-        _ssm.setKey(pos, note % 7);
+        int8_t note = constrain((int8_t)(currentOct + currentKey + value), 0, 35); // 7key*5oct
+        _ssm.setOctave(pos, note / MAX_SCALE_KEY);
+        _ssm.setKey(pos, note % MAX_SCALE_KEY);
     }
 
-    void moveSeqLeft()
+    void addGateLimit(int8_t min, int8_t max)
     {
-        _ssm.moveSeq(StepSeqModel::SeqMove::LEFT);
+        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + min, 
+                _ssm.gateStep.pos.getMax() + max);
     }
 
-    void moveSeqRight()
+    void addKeyLimit(int8_t min, int8_t max)
     {
-        _ssm.moveSeq(StepSeqModel::SeqMove::RIGHT);
+        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + min, 
+                _ssm.keyStep.pos.getMax() + max);
     }
 
-    void setPPQ() {}
-    uint8_t getBPM() { return 0; }
-    uint8_t getPPQ() { return 0; }
+    void addGateStepMode(int8_t value)
+    {
+        _ssm.gateStep.addMode(value);        
+    }
+
+    void addKeyStepMode(int8_t value)
+    {
+        _ssm.keyStep.addMode(value);        
+    }
+
+    void moveSeq(int8_t value)
+    {
+        if (value == 0) return;
+        _ssm.moveSeq(value > 0 ? StepSeqModel::SeqMove::RIGHT : StepSeqModel::SeqMove::LEFT);
+    }
 
     void updateProcedure()
     {
@@ -96,8 +123,8 @@ public:
         if (_seqReadyCount >= _seqReadyCountMax)
         {
             _seqReadyCount = 0;
-            _ssm.keyStep.NextPlayStep();
-            _ssm.gateStep.NextPlayStep();
+            _ssm.keyStep.nextPlayStep();
+            _ssm.gateStep.nextPlayStep();
         }
         else if (_seqReadyCount > _seqGateOffStep * 3)
         {
@@ -152,23 +179,23 @@ public:
     {
         _seqReadyCount = 0;
         ::generateSequence(&_ssm);
-        _ssm.keyStep.SetMode(Step::Mode::Forward);
-        _ssm.gateStep.SetMode(Step::Mode::Forward);
+        _ssm.keyStep.setMode(Step::Mode::Forward);
+        _ssm.gateStep.setMode(Step::Mode::Forward);
         _ssm.keyStep.pos.setLimit(0, 16);
         _ssm.gateStep.pos.setLimit(0, 16);
-        _ssm.keyStep.ResetPlayStep();
-        _ssm.gateStep.ResetPlayStep();
+        _ssm.keyStep.resetPlayStep();
+        _ssm.gateStep.resetPlayStep();
         _ssm.printSeq();
     }
 
     void setLimitStepAtRandom()
     {
-        _ssm.keyStep.ResetPlayStep();
-        _ssm.gateStep.ResetPlayStep();
+        _ssm.keyStep.resetPlayStep();
+        _ssm.gateStep.resetPlayStep();
         _ssm.keyStep.pos.setLimit(random(0, 3), random(4, 16));
         _ssm.gateStep.pos.setLimit(random(0, 3), random(4, 16));
-        _ssm.keyStep.SetMode((Step::Mode)random((long)Step::Mode::Max));
-        _ssm.gateStep.SetMode((Step::Mode)random((long)Step::Mode::Max));
+        _ssm.keyStep.setMode((Step::Mode)random((long)Step::Mode::Max));
+        _ssm.gateStep.setMode((Step::Mode)random((long)Step::Mode::Max));
     }
 
 private:
@@ -182,4 +209,7 @@ private:
     uint8_t _seqReadyCountMax;
     float _seqGateOffStep;
     LimitValue<int8_t> _settingPos;
+
+    uint8_t _bpm;
+    uint8_t _ppq;
 };
