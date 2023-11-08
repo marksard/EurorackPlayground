@@ -56,10 +56,11 @@ public:
 
     void setBPM(byte bpm, byte bpmReso)
     {
-        /// 解像度：16ビート
-        _pTrigger->setBPM(bpm, bpmReso);
-        _seqReadyCountMax = bpmReso / 4;
-        _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
+        if (_pTrigger->setBPM(bpm, bpmReso))
+        {
+            _seqReadyCountMax = bpmReso / 4;
+            _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
+        }
     }
 
     void setPPQ() {}

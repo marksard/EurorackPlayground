@@ -166,7 +166,7 @@ void setup()
     delay(500);
 
     sspc.generateTestToneSequence();
-    sspc.setBPM(128, 48);
+    sspc.setBPM(128, 96);
     sspc.start();
 
     add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
