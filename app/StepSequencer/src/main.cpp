@@ -42,6 +42,8 @@ void initOLED()
 
 void dispOLED()
 {
+    static char disp_buf[10] = {0};
+
     u8g2.clearBuffer();
 
     u8g2.setFont(u8g2_font_7x14B_tf);
@@ -52,53 +54,73 @@ void dispOLED()
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>KEY");
         u8g2.drawStr(52, 8, "E2>GATE");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>STP");
         break;
     case 1:
         u8g2.drawStr(0, 2, "SEQ RND");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>SEQ");
         u8g2.drawStr(52, 8, "E2>RNG");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     case 2:
         u8g2.drawStr(0, 2, "SEQ MOV");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>MOV");
         u8g2.drawStr(52, 8, "E2>---");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     case 3:
         u8g2.drawStr(0, 2, "RNG GT");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>STR");
         u8g2.drawStr(52, 8, "E2>END");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     case 4:
         u8g2.drawStr(0, 2, "RNG KEY");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>STR");
         u8g2.drawStr(52, 8, "E2>END");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     case 5:
         u8g2.drawStr(0, 2, "DIR PLY");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>SEQ");
         u8g2.drawStr(52, 8, "E2>RNG");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     case 6:
         u8g2.drawStr(0, 2, "PLY/STP");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>PLY");
         u8g2.drawStr(52, 8, "E2>RST");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
+    case 7:
+        u8g2.drawStr(0, 2, "BPM");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>BPM");
+        u8g2.drawStr(52, 8, "E2>---");
+        sprintf(disp_buf, "-->%03d", sspc.getBPM());
+        u8g2.drawStr(92, 0, disp_buf);
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     default:
         u8g2.setFont(u8g2_font_5x8_tf);
         break;
     }
 
-    static char disp_buf[20] = {0};
-    sprintf(disp_buf, "%s>%03d", "BPM", sspc.getBPM());
-    u8g2.drawStr(92, 0, disp_buf);
-    sprintf(disp_buf, "%s>%03d", "PPQ", sspc.getPPQ());
-    u8g2.drawStr(92, 8, disp_buf);
+    // sprintf(disp_buf, "%s>%03d", "PPQ", sspc.getPPQ());
+    // u8g2.drawStr(92, 8, disp_buf);
 
     sspc.updateDisplay();
 
@@ -144,7 +166,7 @@ void setup()
     delay(500);
 
     sspc.generateTestToneSequence();
-    sspc.setBPM(64, 48);
+    sspc.setBPM(128, 48);
     sspc.start();
 
     add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
@@ -157,23 +179,21 @@ void loop()
     uint16_t pot0 = pot[0].analogRead(false);
     uint16_t pot1 = pot[1].analogRead(false);
 
-    if (buttons[0].getState() == 2)
-    {
-        menuIndex = constrainCyclic(menuIndex - 1, 0, 6);
-    }
-    if (buttons[1].getState() == 2)
-    {
-        menuIndex = constrainCyclic(menuIndex + 1, 0, 6);
-    }
+    // if (buttons[0].getState() == 2)
+    // {
+    // }
+    // if (buttons[1].getState() == 2)
+    // {
+    // }
+
+    menuIndex = map(pot0, 0, 4040, 0, 7);
 
     switch (menuIndex)
     {
     case 0:
     {
-        uint8_t step = map(pot0, 0, 4040, 0, 15);
-        uint8_t bpm = map(pot1, 0, 4040, 0, 255);
+        uint8_t step = map(pot1, 0, 4040, 0, 15);
         sspc.setSettingPos(step);
-        sspc.setBPM(bpm, 48);
         sspc.addNote(enc0);
         sspc.addGate(enc1);
     }
@@ -211,6 +231,8 @@ void loop()
             sspc.reset();
         }
         break;
+    case 7:
+        sspc.addBPM(enc0);
     default:
         break;
     }

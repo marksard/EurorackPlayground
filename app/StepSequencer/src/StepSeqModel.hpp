@@ -96,6 +96,7 @@ public:
 
     void setLimit(vs min, vs max)
     {
+        if (min == _min && max == _max) return;
         _min = MAX(min, 0);
         _max = MIN(max, _limitMax);
         set(_value);
@@ -183,6 +184,7 @@ public:
 
     void addMode(int8_t value)
     {
+        if (value == 0) return;
         _mode = (Mode)constrain((Mode)_mode + value, Mode::Forward, Mode::TurnBack);
     }
 

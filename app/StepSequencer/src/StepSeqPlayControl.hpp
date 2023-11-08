@@ -20,7 +20,6 @@ public:
         _seqReadyCount = 0;
         _seqReadyCountMax = 0;
         _seqGateOffStep = 0;
-        _bpm = 0;
         _ppq = 0;
     }
 
@@ -48,9 +47,15 @@ public:
         }
     }
 
+    void addBPM(int8_t value)
+    {
+        if (value == 0) return;
+        uint8_t bpm = constrain(_pTrigger->getBPM() + value, 0, 255);
+        _pTrigger->setBPM(bpm);
+    }
+
     void setBPM(byte bpm, byte bpmReso)
     {
-        _bpm = bpm;
         /// 解像度：16ビート
         _pTrigger->setBPM(bpm, bpmReso);
         _seqReadyCountMax = bpmReso / 4;
@@ -58,7 +63,7 @@ public:
     }
 
     void setPPQ() {}
-    uint8_t getBPM() { return _bpm; }
+    uint8_t getBPM() { return _pTrigger->getBPM(); }
     uint8_t getPPQ() { return _ppq; }
 
     void setSettingPos(int8_t value)
@@ -210,6 +215,5 @@ private:
     float _seqGateOffStep;
     LimitValue<int8_t> _settingPos;
 
-    uint8_t _bpm;
     uint8_t _ppq;
 };
