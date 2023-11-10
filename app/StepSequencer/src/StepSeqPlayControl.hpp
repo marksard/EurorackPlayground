@@ -156,6 +156,7 @@ public:
         {
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
             pwm_set_gpio_level(OUT_A, voct);
+            pwm_set_gpio_level(OUT_B, voct);
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
         }

@@ -143,7 +143,7 @@ public:
         }
         else if (_mode == Mode::Reverse)
         {
-            if (_playCount - 1 < 0)
+            if (_playCount - 1 < pos.getMin())
                 _playCount = pos.getMax();
             else
                 _playCount--;
@@ -167,7 +167,7 @@ public:
     {
         if (_mode == Mode::Forward)
         {
-            _playCount = 0;
+            _playCount = pos.getMin();
             pos.set(_playCount);
         }
         else if (_mode == Mode::Reverse)
