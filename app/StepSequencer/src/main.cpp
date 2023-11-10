@@ -4,6 +4,7 @@
 #include "../../commonlib/common/Button.hpp"
 #include "../../commonlib/common/SmoothAnalogRead.hpp"
 #include "../../commonlib/common/RotaryEncoder.hpp"
+#include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
 #include "StepSeqPlayControl.hpp"
@@ -17,20 +18,6 @@ static Button buttons[2];
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
 static int8_t menuIndex = 0;
-
-#define OUT_A D0
-#define GATE_A A3
-#define GATE_B A2
-#define PWM_RESO 4096
-
-#define ENC0A 2
-#define ENC0B 3
-#define ENC1A 6
-#define ENC1B 7
-#define SW0 10
-#define SW1 11
-#define POT0 A0
-#define POT1 A1
 
 void initOLED()
 {
@@ -128,10 +115,10 @@ void dispOLED()
     u8g2.sendBuffer();
 }
 
-void initPWM()
+void initPWM(uint gpio)
 {
-    gpio_set_function(OUT_A, GPIO_FUNC_PWM);
-    uint potSlice = pwm_gpio_to_slice_num(OUT_A);
+    gpio_set_function(gpio, GPIO_FUNC_PWM);
+    uint potSlice = pwm_gpio_to_slice_num(gpio);
     // 最速設定（可能な限り高い周波数にしてRCの値をあげることなく平滑な電圧を得たい）
     // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
     // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
@@ -154,8 +141,6 @@ void setup()
 {
     analogReadResolution(12);
 
-    pinMode(GATE_A, OUTPUT);
-    pinMode(GATE_B, OUTPUT);
     enc[0].init(ENC0A, ENC0B);
     enc[1].init(ENC1A, ENC1B);
     pot[0].init(POT0);
@@ -163,7 +148,10 @@ void setup()
     buttons[0].init(SW0);
     buttons[1].init(SW1);
 
-    initPWM();
+    pinMode(GATE_A, OUTPUT);
+    pinMode(GATE_B, OUTPUT);
+    initPWM(OUT_A);
+    initPWM(OUT_B);
 
     Serial.begin(9600);
     // while (!Serial)

@@ -1,10 +1,11 @@
 #pragma once
 #include <Arduino.h>
 #include <U8g2lib.h>
-#include "StepSeqModel.hpp"
-#include "StepSeqView.hpp"
 #include "../../commonlib/common/TriggerInterface.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
+#include "gpio.h"
+#include "StepSeqModel.hpp"
+#include "StepSeqView.hpp"
 
 static float voltPerTone = 4096.0 / 12.0 / 5.0;
 
@@ -138,25 +139,25 @@ public:
         else if (_seqReadyCount >= _seqGateOffStep * 3 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::L)
         {
-            gpio_put(A3, LOW);
+            gpio_put(GATE_A, LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 2 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::H)
         {
-            gpio_put(A3, LOW);
+            gpio_put(GATE_A, LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::S)
         {
-            gpio_put(A3, LOW);
+            gpio_put(GATE_A, LOW);
         }
 
         if (_seqReadyCount == 0)
         {
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
-            pwm_set_gpio_level(D0, voct);
+            pwm_set_gpio_level(OUT_A, voct);
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
-            gpio_put(A3, gate);
+            gpio_put(GATE_A, gate);
         }
         _seqReadyCount++;
     }
