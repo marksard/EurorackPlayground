@@ -19,6 +19,8 @@ static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
 static int8_t menuIndex = 0;
 
+static const char *scale[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc"};
+
 void initOLED()
 {
     u8g2.begin();
@@ -49,8 +51,8 @@ void dispOLED()
         u8g2.drawStr(0, 2, "SEQ RND");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>SEQ");
-        u8g2.drawStr(52, 8, "E2>RNG");
-        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(52, 8, "E2>RANG");
+        u8g2.drawStr(92, 0, "SW>RST");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 2:
@@ -62,7 +64,7 @@ void dispOLED()
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 3:
-        u8g2.drawStr(0, 2, "RNG GT");
+        u8g2.drawStr(0, 2, "RNG G");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>STR");
         u8g2.drawStr(52, 8, "E2>END");
@@ -80,8 +82,8 @@ void dispOLED()
     case 5:
         u8g2.drawStr(0, 2, "DIR PLY");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>SEQ");
-        u8g2.drawStr(52, 8, "E2>RNG");
+        u8g2.drawStr(52, 0, "E1>KEY");
+        u8g2.drawStr(52, 8, "E2>GATE");
         u8g2.drawStr(92, 0, "SW>---");
         u8g2.drawStr(92, 8, "P2>---");
         break;
@@ -94,13 +96,14 @@ void dispOLED()
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 7:
-        u8g2.drawStr(0, 2, "BPM");
+        u8g2.drawStr(0, 2, "BPM/SCL");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>BPM");
-        u8g2.drawStr(52, 8, "E2>---");
+        u8g2.drawStr(52, 8, "E2>SCL");
         sprintf(disp_buf, "-->%03d", sspc.getBPM());
         u8g2.drawStr(92, 0, disp_buf);
-        u8g2.drawStr(92, 8, "P2>---");
+        sprintf(disp_buf, "-->%s", scale[sspc.getScale()]);
+        u8g2.drawStr(92, 8, disp_buf);
         break;
     default:
         u8g2.setFont(u8g2_font_5x8_tf);
@@ -197,6 +200,10 @@ void loop()
             sspc.generateSequence();
         if (enc1 != 0)
             sspc.setLimitStepAtRandom();
+        if (buttons[0].getState() == 2)
+            sspc.reset();
+        if (buttons[1].getState() == 2)
+            sspc.resetRange();
         break;
     case 2:
         sspc.moveSeq(enc0);
@@ -227,6 +234,9 @@ void loop()
         break;
     case 7:
         sspc.addBPM(enc0);
+        sspc.addScale(enc1);
+    case 8:
+        break;
     default:
         break;
     }

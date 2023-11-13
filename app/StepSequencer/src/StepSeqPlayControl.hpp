@@ -40,6 +40,12 @@ public:
         _ssm.gateStep.resetPlayStep();
     }
 
+    void resetRange()
+    {
+        _ssm.keyStep.pos.setLimit(0, 16);
+        _ssm.gateStep.pos.setLimit(0, 16);
+    }
+
     void setSyncMode()
     {
         bool result = _pTrigger->ready();
@@ -67,6 +73,7 @@ public:
     void setPPQ() {}
     uint8_t getBPM() { return _pTrigger->getBPM(); }
     uint8_t getPPQ() { return _ppq; }
+    int8_t getScale() { return _ssm._scaleIndex.get(); }
 
     void setSettingPos(int8_t value)
     {
@@ -114,6 +121,11 @@ public:
         _ssm.keyStep.addMode(value);        
     }
 
+    void addScale(int8_t value)
+    {
+        _ssm._scaleIndex.add(value);
+    }
+
     void moveSeq(int8_t value)
     {
         if (value == 0) return;
@@ -140,16 +152,19 @@ public:
                  _ssm.getPlayGate() == StepSeqModel::Gate::L)
         {
             gpio_put(GATE_A, LOW);
+            gpio_put(GATE_B, LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 2 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::H)
         {
             gpio_put(GATE_A, LOW);
+            gpio_put(GATE_B, LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::S)
         {
             gpio_put(GATE_A, LOW);
+            gpio_put(GATE_B, LOW);
         }
 
         if (_seqReadyCount == 0)
@@ -159,6 +174,7 @@ public:
             pwm_set_gpio_level(OUT_B, voct);
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
+            gpio_put(GATE_B, gate);
         }
         _seqReadyCount++;
     }

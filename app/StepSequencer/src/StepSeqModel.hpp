@@ -5,6 +5,7 @@
 #define DEF_MAX_STEP_M1 (DEF_MAX_STEP - 1)
 #define MAX_SCALE_KEY 7
 #define MAX_SCALES 7
+#define MAX_SCALES_M1 (MAX_SCALES - 1)
 
 // スケール
 static const uint8_t scales[MAX_SCALES][MAX_SCALE_KEY] =
@@ -222,7 +223,7 @@ public:
     };
 
 public:
-    StepSeqModel() : _scaleIndex(MAX_SCALES, 0, MAX_SCALES)
+    StepSeqModel() : _scaleIndex(MAX_SCALES_M1, 0, MAX_SCALES_M1)
     {
         initArray(_keys, MAX_STEP);
         initArray(_octaves, MAX_STEP);
@@ -322,7 +323,7 @@ public:
     uint8_t _keys[MAX_STEP];
     uint8_t _octaves[MAX_STEP];
     StepSeqModel::Gate _gates[MAX_STEP];
-    LimitValue<uint8_t> _scaleIndex;
+    LimitValue<int8_t> _scaleIndex;
 };
 
 void generateSequence(StepSeqModel *pssm)
