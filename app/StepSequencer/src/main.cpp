@@ -1,3 +1,10 @@
+/*!
+ * StepSeqView
+ * Copyright 2023 marksard
+ * This software is released under the MIT license.
+ * see https://opensource.org/licenses/MIT
+ */ 
+
 #include <Arduino.h>
 #include <hardware/pwm.h>
 #include <U8g2lib.h>
