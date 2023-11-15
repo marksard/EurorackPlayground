@@ -79,14 +79,15 @@ void dispOLED()
     u8g2.sendBuffer();
 }
 
-void initPWM()
+void initPWM(uint gpio)
 {
-    gpio_set_function(OUT_A, GPIO_FUNC_PWM);
-    uint potSlice = pwm_gpio_to_slice_num(OUT_A);
+    gpio_set_function(gpio, GPIO_FUNC_PWM);
+    uint potSlice = pwm_gpio_to_slice_num(gpio);
     // 最速設定（可能な限り高い周波数にしてRCの値をあげることなく平滑な電圧を得たい）
     // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
     // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
     pwm_set_clkdiv(potSlice, 1);
+    // pwm_set_clkdiv(potSlice, 125000000.0 / (PWM_RESO * 10000.0));
     pwm_set_wrap(potSlice, PWM_RESO - 1);
     pwm_set_enabled(potSlice, true);
 }
@@ -116,6 +117,7 @@ bool intrTimer(struct repeating_timer *t)
         break;
     }
     pwm_set_gpio_level(OUT_A, value);
+    pwm_set_gpio_level(OUT_B, value);
 
     return true;
 }
@@ -130,21 +132,28 @@ void setup()
     pot[1].init(POT1);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
-    vOct.init(GATE_A);
+    vOct.init(GATE_B);
 
     // 第一引数は負数でコールバック開始-開始間
     add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
-    initPWM();
+    initPWM(OUT_A);
+    initPWM(OUT_B);
 }
 
 void loop()
 {
+    static int16_t voctTune = 118;
     uint16_t voct = vOct.analogReadDirect();
     uint16_t coarse = (float)pot[0].analogRead(false) / rateRatio;
 
+    if (buttons[0].getState() == 3)
+    {
+        voctTune = (pot[1].analogRead() / ((float)ADC_RESO / 400.0)) - (400 >> 1);
+    }
+
     // 0to5VのV/OCTの想定でmap変換。RP2040では抵抗分圧で5V->3.3Vにしておく
     uint16_t freqency = coarse *
-                        (float)pow(2, map(voct, 0, ADC_RESO, 0, DAC_MAX_MILLVOLT) * 0.001);
+                        (float)pow(2, map(voct, 0, ADC_RESO - voctTune, 0, DAC_MAX_MILLVOLT) * 0.001);
 
     tuningWordM = UINT32_MAX_P1 * freqency / intrruptClock;
 
@@ -155,7 +164,7 @@ void loop()
     {
         if (noteFreq[i] <= (float)coarse)
         {
-            noteNameIndex = i;
+            noteNameIndex = i+1;
             break;
         }
     }
@@ -174,19 +183,21 @@ void loop()
         noteNameIndexOld = noteNameIndex;
     }
 
-    // static uint8_t dispCount = 0;
-    // dispCount++;
-    // if (dispCount == 0)
-    // {
-    //     Serial.print(voct);
-    //     Serial.print(", ");
-    //     Serial.print(coarse);
-    //     Serial.print(", ");
-    //     Serial.print(freqency);
-    //     Serial.print(", ");
-    //     Serial.print(selectWave);
-    //     Serial.println();
-    // }
+    static uint8_t dispCount = 0;
+    dispCount++;
+    if (dispCount == 0)
+    {
+        Serial.print(voct);
+        Serial.print(", ");
+        Serial.print(coarse);
+        Serial.print(", ");
+        Serial.print(voctTune);
+        Serial.print(", ");
+        Serial.print(freqency);
+        Serial.print(", ");
+        Serial.print(selectWave);
+        Serial.println();
+    }
 
     sleep_us(50); // 20kHz
 }
