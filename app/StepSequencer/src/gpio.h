@@ -1,10 +1,17 @@
 #pragma once
 #include <Arduino.h>
 
-#define GATE_A A3
-#define GATE_B A2
-#define OUT_A D0
-#define OUT_B D1
+// #define rev100
+#ifdef rev100
+#define GATE_A A2 // gate
+#define GATE_B A3 // v/oct
+#else
+#define GATE_A A3 // gate (impedance 4.7k)
+#define GATE_B A2 // v/oct (impedance 47k)
+#endif
+
+#define OUT_A D0 // ac out (rev1.0.0->out)
+#define OUT_B D1 // dc out
 #define PWM_RESO 4096
 
 #define ENC0A D2

@@ -141,6 +141,7 @@ public:
 
     void updateProcedure()
     {
+        static uint8_t syncCount = 1;
         if (!_pTrigger->ready())
         {
             return;
@@ -151,9 +152,16 @@ public:
             _seqReadyCount = 0;
             _ssm.keyStep.nextPlayStep();
             _ssm.gateStep.nextPlayStep();
+            syncCount++;
+            if (syncCount >= 2)
+            {
+                gpio_put(GATE_B, HIGH);
+                syncCount = 0;
+            }
         }
         else if (_seqReadyCount > _seqGateOffStep * 3)
         {
+            gpio_put(GATE_B, LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 3 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::L)
@@ -181,7 +189,7 @@ public:
             pwm_set_gpio_level(OUT_B, voct);
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
-            gpio_put(GATE_B, gate);
+            // gpio_put(GATE_B, gate);
         }
         _seqReadyCount++;
     }
