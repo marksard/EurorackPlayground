@@ -12,18 +12,13 @@
 #include "../../commonlib/common/SmoothAnalogRead.hpp"
 #include "../../commonlib/common/RotaryEncoder.hpp"
 #include "gpio.h"
-#include "note.h"
-#include "sine_12bit_4096.h"
+#include "Oscillator.hpp"
 
 #define PWM_RESO 4096
-#define PWM_RESO_M1 (PWM_RESO - 1)
-#define TIMER_INTR_TM 10      // us == 100kHz
+#define TIMER_INTR_TM 20      // us == 50kHz
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
-#define ADC_RESO_M1 (ADC_RESO - 1)
 #define MAX_COARSE_FREQ 550
-#define MAX_FREQ 5000
-#define UINT32_MAX_P1 4294967296
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 static Button buttons[2];
@@ -34,15 +29,9 @@ static SmoothAnalogRead vOct;
 static repeating_timer timer;
 const static float rateRatio = (float)ADC_RESO / (float)MAX_COARSE_FREQ;
 
-const static float intrruptClock = 1000000.0 / (float)TIMER_INTR_TM; // == 1sec / 10us == 1000000us / 10us == 100kHz
-static uint16_t pulseWidth = ADC_RESO / 2;
-const static uint16_t halfReso = ADC_RESO / 2;
-static uint32_t tuningWordM = 0;
-static uint8_t selectWave = 0;
-static uint8_t noteNameIndex = 0;
-static uint8_t requiresUpdate = 0;
+Oscillator osc[2];
 
-static const char *waveName[] = {"SQUARE", "UP SAW", "TRIANGLE", "SINE", "NONE"};
+static uint8_t requiresUpdate = 0;
 
 template <typename vs = int8_t>
 vs constrainCyclic(vs value, vs min, vs max)
@@ -60,6 +49,7 @@ void initOLED()
     u8g2.setContrast(40);
     u8g2.setFontPosTop();
     u8g2.setDrawColor(2);
+    u8g2.setFont(u8g2_font_7x14B_tf);
     //   u8g2.setFlipMode(1);
 }
 
@@ -71,10 +61,10 @@ void dispOLED()
         return;
     requiresUpdate = 0;
     u8g2.clearBuffer();
-
-    u8g2.setFont(u8g2_font_7x14B_tf);
-    sprintf(disp_buf, "%s : %s", waveName[selectWave], noteName[noteNameIndex]);
-    u8g2.drawStr(0, 0, disp_buf);
+    sprintf(disp_buf, "%s: %s", osc[0].getWaveName(), osc[0].getNoteName());
+    u8g2.drawStr(0, 16, disp_buf);
+    sprintf(disp_buf, "%s: %s", osc[1].getWaveName(), osc[1].getNoteName());
+    u8g2.drawStr(0, 32, disp_buf);
 
     u8g2.sendBuffer();
 }
@@ -94,31 +84,10 @@ void initPWM(uint gpio)
 
 bool intrTimer(struct repeating_timer *t)
 {
-    static uint32_t phaseAccum = 0;
-    phaseAccum = phaseAccum + tuningWordM;
-    int index = phaseAccum >> 20;
-    uint16_t value = 0;
-    switch (selectWave)
-    {
-    case 0: // SQR
-        value = index < pulseWidth ? ADC_RESO_M1 : 0;
-        break;
-    case 1: // UP SAW
-        value = index;
-        break;
-    case 2: // TRI
-        value = index < halfReso ? index * 2 : (ADC_RESO_M1 - index) * 2;
-        break;
-    case 3: // SINE
-        value = sine_12bit_4096[index];
-        break;
-    default:
-        value = 0;
-        break;
-    }
-    pwm_set_gpio_level(OUT_A, value);
-    pwm_set_gpio_level(OUT_B, value);
-
+    uint16_t valueA = osc[0].getWaveValue();
+    pwm_set_gpio_level(OUT_A, valueA);
+    uint16_t valueB = osc[1].getWaveValue();
+    pwm_set_gpio_level(OUT_B, valueB);
     return true;
 }
 
@@ -132,6 +101,8 @@ void setup()
     pot[1].init(POT1);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
+    osc[0].init(TIMER_INTR_TM);
+    osc[1].init(TIMER_INTR_TM);
     vOct.init(GATE_B);
 
     // 第一引数は負数でコールバック開始-開始間
@@ -143,45 +114,30 @@ void setup()
 void loop()
 {
     static int16_t voctTune = 118;
-    uint16_t voct = vOct.analogReadDirect();
-    uint16_t coarse = (float)pot[0].analogRead(false) / rateRatio;
-
+    uint16_t voct = vOct.analogRead(false);
+    // pulseWidth = pot[1].analogRead(false);
     if (buttons[0].getState() == 3)
     {
         voctTune = (pot[1].analogRead() / ((float)ADC_RESO / 400.0)) - (400 >> 1);
     }
-
     // 0to5VのV/OCTの想定でmap変換。RP2040では抵抗分圧で5V->3.3Vにしておく
-    uint16_t freqency = coarse *
-                        (float)pow(2, map(voct, 0, ADC_RESO - voctTune, 0, DAC_MAX_MILLVOLT) * 0.001);
+    float powVOct = (float)pow(2, map(voct, 0, ADC_RESO - voctTune, 0, DAC_MAX_MILLVOLT) * 0.001);
 
-    tuningWordM = UINT32_MAX_P1 * freqency / intrruptClock;
-
-    pulseWidth = pot[1].analogRead(false);
-    selectWave = constrainCyclic(selectWave + (int)enc[0].getDirection(true), 0, 3);
-
-    for (int i = 127; i >= 0; --i)
-    {
-        if (noteFreq[i] <= (float)coarse)
-        {
-            noteNameIndex = i+1;
-            break;
-        }
-    }
-
+    uint16_t coarseA = (float)pot[0].analogRead(false) / rateRatio;
+    uint16_t freqencyA = coarseA * powVOct;
+    osc[0].setFrequency(freqencyA);
     // OLED描画更新でノイズが乗るので必要時以外更新しない
-    static uint8_t selectWaveOld = 0;
-    static uint8_t noteNameIndexOld = 0;
-    if (selectWave != selectWaveOld)
-    {
-        requiresUpdate = 1;
-        selectWaveOld = selectWave;
-    }
-    if (noteNameIndex != noteNameIndexOld)
-    {
-        requiresUpdate = 1;
-        noteNameIndexOld = noteNameIndex;
-    }
+    requiresUpdate |= osc[0].setNoteNameFromFrequency(coarseA);
+    requiresUpdate |= osc[0].setWave((Oscillator::Wave)
+        constrainCyclic((int)osc[0].getWave() + (int)enc[0].getDirection(true), 0, (int)Oscillator::Wave::MAX));
+
+    uint16_t coarseB = (float)pot[1].analogRead(false) / rateRatio;
+    uint16_t freqencyB = coarseB * powVOct;
+    osc[1].setFrequency(freqencyB);
+    // OLED描画更新でノイズが乗るので必要時以外更新しない
+    requiresUpdate |= osc[1].setNoteNameFromFrequency(coarseB);
+    requiresUpdate |= osc[1].setWave((Oscillator::Wave)
+        constrainCyclic((int)osc[1].getWave() + (int)enc[1].getDirection(true), 0, (int)Oscillator::Wave::MAX));
 
     static uint8_t dispCount = 0;
     dispCount++;
@@ -189,13 +145,14 @@ void loop()
     {
         Serial.print(voct);
         Serial.print(", ");
-        Serial.print(coarse);
-        Serial.print(", ");
         Serial.print(voctTune);
         Serial.print(", ");
-        Serial.print(freqency);
+        Serial.print(coarseA);
         Serial.print(", ");
-        Serial.print(selectWave);
+        Serial.print(freqencyA);
+        Serial.print(", ");
+        Serial.print(osc[0].getWaveName());
+        Serial.print(", ");
         Serial.println();
     }
 
