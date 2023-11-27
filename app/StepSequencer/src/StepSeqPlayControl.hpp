@@ -53,6 +53,17 @@ public:
         _ssm.gateStep.pos.setLimit(0, 16);
     }
 
+    void resetMode()
+    {
+        _ssm.keyStep.setMode(Step::Mode::Forward);
+        _ssm.gateStep.setMode(Step::Mode::Forward);
+    }
+
+    void resetAllStep()
+    {
+        ::resetSequence(&_ssm);
+    }
+
     void setSyncMode()
     {
         bool result = _pTrigger->ready();

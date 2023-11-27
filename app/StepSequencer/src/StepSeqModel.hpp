@@ -378,3 +378,17 @@ void generateTestToneSequence(StepSeqModel *pssm)
         pssm->setKey(i, 0);
      }
 }
+
+
+void resetSequence(StepSeqModel *pssm)
+{
+    Serial.println("resetSequence\n");
+    byte geteSelect = random(MAX_GATE_TIMINGS);
+
+    for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
+    {
+        pssm->setGate(i, StepSeqModel::Gate::S);
+        pssm->setOctave(i, 1);
+        pssm->setKey(i, 0);
+     }
+}

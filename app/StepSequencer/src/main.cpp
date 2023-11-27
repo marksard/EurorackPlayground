@@ -3,7 +3,7 @@
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
- */ 
+ */
 
 #include <Arduino.h>
 #include <hardware/pwm.h>
@@ -47,62 +47,6 @@ void dispOLED()
     switch (menuIndex)
     {
     case 0:
-        u8g2.drawStr(0, 2, "KEY EDT");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>KEY");
-        u8g2.drawStr(52, 8, "E2>GATE");
-        u8g2.drawStr(92, 0, "SW>---");
-        u8g2.drawStr(92, 8, "P2>STP");
-        break;
-    case 1:
-        u8g2.drawStr(0, 2, "SEQ RND");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>SEQ");
-        u8g2.drawStr(52, 8, "E2>RANG");
-        u8g2.drawStr(92, 0, "SW>RST");
-        u8g2.drawStr(92, 8, "P2>---");
-        break;
-    case 2:
-        u8g2.drawStr(0, 2, "SEQ MOV");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>MOV");
-        u8g2.drawStr(52, 8, "E2>---");
-        u8g2.drawStr(92, 0, "SW>---");
-        u8g2.drawStr(92, 8, "P2>---");
-        break;
-    case 3:
-        u8g2.drawStr(0, 2, "RNG G");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>STR");
-        u8g2.drawStr(52, 8, "E2>END");
-        u8g2.drawStr(92, 0, "SW>---");
-        u8g2.drawStr(92, 8, "P2>---");
-        break;
-    case 4:
-        u8g2.drawStr(0, 2, "RNG KEY");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>STR");
-        u8g2.drawStr(52, 8, "E2>END");
-        u8g2.drawStr(92, 0, "SW>---");
-        u8g2.drawStr(92, 8, "P2>---");
-        break;
-    case 5:
-        u8g2.drawStr(0, 2, "DIR PLY");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>KEY");
-        u8g2.drawStr(52, 8, "E2>GATE");
-        u8g2.drawStr(92, 0, "SW>---");
-        u8g2.drawStr(92, 8, "P2>---");
-        break;
-    case 6:
-        u8g2.drawStr(0, 2, "PLY/STP");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>PLY");
-        u8g2.drawStr(52, 8, "E2>RST");
-        u8g2.drawStr(92, 0, "SW>---");
-        u8g2.drawStr(92, 8, "P2>---");
-        break;
-    case 7:
         u8g2.drawStr(0, 2, "BPM/SCL");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>BPM");
@@ -111,6 +55,62 @@ void dispOLED()
         u8g2.drawStr(92, 0, disp_buf);
         sprintf(disp_buf, "-->%s", scale[sspc.getScale()]);
         u8g2.drawStr(92, 8, disp_buf);
+        break;
+    case 1:
+        u8g2.drawStr(0, 2, "PLY/STP");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>PLY");
+        u8g2.drawStr(52, 8, "E2>RST");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
+    case 2:
+        u8g2.drawStr(0, 2, "SEQ RND");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>SEQ");
+        u8g2.drawStr(52, 8, "E2>RANG");
+        u8g2.drawStr(92, 0, "SW>RST");
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
+    case 3:
+        u8g2.drawStr(0, 2, "KEY EDT");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>KEY");
+        u8g2.drawStr(52, 8, "E2>GATE");
+        u8g2.drawStr(92, 0, "SW>RST");
+        u8g2.drawStr(92, 8, "P2>STP");
+        break;
+    case 4:
+        u8g2.drawStr(0, 2, "SEQ MOV");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>MOV");
+        u8g2.drawStr(52, 8, "E2>---");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
+    case 5:
+        u8g2.drawStr(0, 2, "RNG G");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>STR");
+        u8g2.drawStr(52, 8, "E2>END");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
+    case 6:
+        u8g2.drawStr(0, 2, "RNG KEY");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>STR");
+        u8g2.drawStr(52, 8, "E2>END");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
+    case 7:
+        u8g2.drawStr(0, 2, "DIR PLY");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>KEY");
+        u8g2.drawStr(52, 8, "E2>GATE");
+        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     default:
         u8g2.setFont(u8g2_font_5x8_tf);
@@ -180,52 +180,20 @@ void loop()
 {
     int8_t enc0 = enc[0].getDirection(true);
     int8_t enc1 = enc[1].getDirection(true);
+    uint8_t btn0 = buttons[0].getState();
+    uint8_t btn1 = buttons[1].getState();
     uint16_t pot0 = pot[0].analogRead(false);
     uint16_t pot1 = pot[1].analogRead(false);
-
-    // if (buttons[0].getState() == 2)
-    // {
-    // }
-    // if (buttons[1].getState() == 2)
-    // {
-    // }
 
     menuIndex = map(pot0, 0, 4040, 0, 7);
 
     switch (menuIndex)
     {
     case 0:
-    {
-        uint8_t step = map(pot1, 0, 4040, 0, 15);
-        sspc.setSettingPos(step);
-        sspc.addNote(enc0);
-        sspc.addGate(enc1);
-    }
-    break;
+        sspc.addBPM(enc0);
+        sspc.addScale(enc1);
+        break;
     case 1:
-        if (enc0 != 0)
-            sspc.generateSequence();
-        if (enc1 != 0)
-            sspc.setLimitStepAtRandom();
-        if (buttons[0].getState() == 2)
-            sspc.reset();
-        if (buttons[1].getState() == 2)
-            sspc.resetRange();
-        break;
-    case 2:
-        sspc.moveSeq(enc0);
-        break;
-    case 3:
-        sspc.addGateLimit(enc0, enc1);
-        break;
-    case 4:
-        sspc.addKeyLimit(enc0, enc1);
-        break;
-    case 5:
-        sspc.addKeyStepMode(enc0);
-        sspc.addGateStepMode(enc1);
-        break;
-    case 6:
         if (enc0 >= 1)
         {
             sspc.start();
@@ -239,10 +207,50 @@ void loop()
             sspc.reset();
         }
         break;
+    case 2:
+        if (enc0 != 0)
+            sspc.generateSequence();
+        if (enc1 != 0)
+            sspc.setLimitStepAtRandom();
+        if (btn0 == 2)
+        {
+            sspc.resetAllStep();
+        }
+        if (btn1 == 2)
+        {
+            sspc.resetMode();
+            sspc.resetRange();
+            sspc.reset();
+        }
+        break;
+    case 3:
+    {
+        uint8_t step = map(pot1, 0, 4040, 0, 15);
+        sspc.setSettingPos(step);
+        sspc.addNote(enc0);
+        sspc.addGate(enc1);
+        if (btn0 == 2)
+        {
+            sspc.generateTestToneSequence();
+        }
+        if (btn1 == 2)
+        {
+            sspc.resetAllStep();
+        }
+    }
+    break;
+    case 4:
+        sspc.moveSeq(enc0);
+        break;
+    case 5:
+        sspc.addGateLimit(enc0, enc1);
+        break;
+    case 6:
+        sspc.addKeyLimit(enc0, enc1);
+        break;
     case 7:
-        sspc.addBPM(enc0);
-        sspc.addScale(enc1);
-    case 8:
+        sspc.addKeyStepMode(enc0);
+        sspc.addGateStepMode(enc1);
         break;
     default:
         break;
