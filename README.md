@@ -42,6 +42,8 @@ Assumed operating frequency from 0 Hz to around 5 kHz.
 
 ## Image
 
+![img](https://marksard.github.io/assets/photos/20231113_IMGP8382.jpg)
+
 ## Schematic
 
 ![img](_data/Eurorack%20Playground%20MkI%20schematic%20rev1.1.0.png)
