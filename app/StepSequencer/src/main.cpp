@@ -113,7 +113,7 @@ void dispOLED()
         u8g2.drawStr(92, 8, "P2>---");
         break;
     default:
-        u8g2.setFont(u8g2_font_5x8_tf);
+        // u8g2.setFont(u8g2_font_5x8_tf);
         break;
     }
 

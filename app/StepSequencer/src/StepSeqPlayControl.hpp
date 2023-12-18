@@ -3,7 +3,7 @@
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
- */ 
+ */
 
 #pragma once
 #include <Arduino.h>
@@ -27,6 +27,7 @@ public:
 
         _seqReadyCount = 0;
         _seqReadyCountMax = 0;
+        _syncCount = 0;
         _seqGateOffStep = 0;
         _ppq = 0;
     }
@@ -43,6 +44,8 @@ public:
 
     void reset()
     {
+        _seqReadyCount = 0;
+        _syncCount = 0;
         _ssm.keyStep.resetPlayStep();
         _ssm.gateStep.resetPlayStep();
     }
@@ -102,8 +105,8 @@ public:
     {
         uint8_t pos = _settingPos.get();
         uint8_t current = _ssm.getGate(pos);
-        _ssm.setGate(pos, 
-        (StepSeqModel::Gate)constrain((current + value), 
+        _ssm.setGate(pos,
+        (StepSeqModel::Gate)constrain((current + value),
             StepSeqModel::Gate::_, StepSeqModel::Gate::T));
     }
 
@@ -119,40 +122,40 @@ public:
 
     void addGateLimit(int8_t min, int8_t max)
     {
-        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + min, 
+        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + min,
                 _ssm.gateStep.pos.getMax() + max);
     }
 
     void addKeyLimit(int8_t min, int8_t max)
     {
-        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + min, 
+        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + min,
                 _ssm.keyStep.pos.getMax() + max);
     }
 
     void addGateKeyStart(int8_t gate, int8_t key)
     {
-        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + gate, 
+        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + gate,
                 _ssm.gateStep.pos.getMax());
-        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + key, 
+        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + key,
                 _ssm.keyStep.pos.getMax());
     }
 
     void addGateKeyEnd(int8_t gate, int8_t key)
     {
-        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin(), 
+        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin(),
                 _ssm.gateStep.pos.getMax() + gate);
-        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin(), 
+        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin(),
                 _ssm.keyStep.pos.getMax() + key);
     }
 
     void addGateStepMode(int8_t value)
     {
-        _ssm.gateStep.addMode(value);        
+        _ssm.gateStep.addMode(value);
     }
 
     void addKeyStepMode(int8_t value)
     {
-        _ssm.keyStep.addMode(value);        
+        _ssm.keyStep.addMode(value);
     }
 
     void addScale(int8_t value)
@@ -168,7 +171,6 @@ public:
 
     void updateProcedure()
     {
-        static uint8_t syncCount = 1;
         if (!_pTrigger->ready())
         {
             return;
@@ -179,12 +181,6 @@ public:
             _seqReadyCount = 0;
             _ssm.keyStep.nextPlayStep();
             _ssm.gateStep.nextPlayStep();
-            syncCount++;
-            if (syncCount >= 1)
-            {
-                gpio_put(GATE_B, HIGH);
-                syncCount = 0;
-            }
         }
         else if (_seqReadyCount > _seqGateOffStep * 3)
         {
@@ -216,7 +212,12 @@ public:
             pwm_set_gpio_level(OUT_B, voct);
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
-            // gpio_put(GATE_B, gate);
+            _syncCount++;
+            if (_syncCount >= 1)
+            {
+                gpio_put(GATE_B, HIGH);
+                _syncCount = 0;
+            }
         }
         _seqReadyCount++;
     }
@@ -273,6 +274,7 @@ private:
 
     uint8_t _seqReadyCount;
     uint8_t _seqReadyCountMax;
+    uint8_t _syncCount;
     float _seqGateOffStep;
     LimitValue<int8_t> _settingPos;
 

@@ -343,7 +343,7 @@ void generateSequence(StepSeqModel *pssm)
     {
         // タイミングマップにランダムでタイミングをorして足す
         StepSeqModel::Gate gate = gateMap[geteSelect][i] == 1 ? 
-        (StepSeqModel::Gate)random(StepSeqModel::Gate::S, StepSeqModel::Gate::Max) : 
+        (StepSeqModel::Gate)random(StepSeqModel::Gate::H, StepSeqModel::Gate::Max) : 
         StepSeqModel::Gate::_;
         pssm->setGate(i, gate);
 
