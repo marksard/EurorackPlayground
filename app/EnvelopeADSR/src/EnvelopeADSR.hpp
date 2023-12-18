@@ -23,6 +23,9 @@ public:
         _decay = 0;
         _sustain = 0;
         _release = 0;
+        _attack_curve_ratio = 3.0;
+        _decay_curve_ratio = 3.0;
+        _release_curve_ratio = 4.0;
         _stageCount = 0;
         _stage = 0;
         _lastGate = 0;
@@ -45,10 +48,14 @@ public:
         _release = release;
     }
 
-    void setAttack(uint16_t attack) { _attack = attack; }
-    void setDecay(uint16_t decay) { _decay = decay; }
-    void setSustain(uint16_t sustain) { _sustain = min(sustain, _maxLevel); }
-    void setRelease(uint16_t release) { _release = release; }
+    void setAttack(uint16_t value) { _attack = value; }
+    void setDecay(uint16_t value) { _decay = value; }
+    void setSustain(uint16_t value) { _sustain = min(value, _maxLevel); }
+    void setRelease(uint16_t value) { _release = value; }
+    
+    void setAttackCurveRatio(double value) { _attack_curve_ratio = value; }
+    void setDecayCurveRatio(double value) { _decay_curve_ratio = value; }
+    void setReleaseCurveRatio(double value) { _release_curve_ratio = value; }
 
     void next(uint8_t gate)
     {
@@ -81,11 +88,11 @@ public:
             // _level = min((double)_stageCount * (_maxLevel / _attack), _maxLevel);
             if (_decay < 2)
             {
-                _level = _sustain - (EXP_CURVE(_stageCount, _attack, 3.0) * _sustain);
+                _level = _sustain - (EXP_CURVE(_stageCount, _attack, _attack_curve_ratio) * _sustain);
             }
             else
             {
-                _level = _maxLevel - (EXP_CURVE(_stageCount, _attack, 3.0) * _maxLevel);
+                _level = _maxLevel - (EXP_CURVE(_stageCount, _attack, _attack_curve_ratio) * _maxLevel);
             }
             _lastLevel = _level;
             if (_attack < _stageCount)
@@ -101,7 +108,7 @@ public:
             // linear curve
             // _level = max(_maxLevel - (_stageCount * (_maxLevel / _decay)), _sustain);
             // exponential curve
-            _level = (EXP_CURVE(_stageCount, _decay, 5.0) * (_maxLevel - _sustain)) + _sustain;
+            _level = (EXP_CURVE(_stageCount, _decay, _decay_curve_ratio) * (_maxLevel - _sustain)) + _sustain;
             
             _lastLevel = _level;
             if (_decay < _stageCount)
@@ -120,7 +127,7 @@ public:
             // linear curve
             // _level = max(_lastLevel - _stageCount * (_maxLevel / _release), 0);
             // exponential curve
-            _level = (EXP_CURVE(_stageCount, _release, 4.0) * (_lastLevel));
+            _level = (EXP_CURVE(_stageCount, _release, _release_curve_ratio) * (_lastLevel));
             if (_release < _stageCount)
             {
                 _stage = 4;
@@ -153,6 +160,9 @@ private:
     uint16_t _decay;
     uint16_t _sustain;
     uint16_t _release;
+    double _attack_curve_ratio;
+    double _decay_curve_ratio;
+    double _release_curve_ratio;
     uint16_t _stageCount;
     uint8_t _stage;
     uint8_t _lastGate;
