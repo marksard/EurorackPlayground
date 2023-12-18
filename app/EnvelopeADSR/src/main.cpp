@@ -91,9 +91,9 @@ void setup()
 
     // add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
     env[0].init((double)PWM_RESO);
-    env[0].set(5, 1000, 0, 400);
+    env[0].set(5, 1500, 0, 400);
     env[1].init((double)PWM_RESO);
-    env[1].set(5, 1000, 2000, 400);
+    env[1].set(5, 1500, 2000, 50);
 
     envCont[0].init(&env[0]);
     envCont[1].init(&env[1]);

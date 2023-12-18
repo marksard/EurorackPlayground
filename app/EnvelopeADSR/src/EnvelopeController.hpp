@@ -22,6 +22,10 @@ public:
 
     void init(EnvelopeADSR *pEnv)
     {
+        setMaxAttackTime(2000);
+        setMaxDecayTime(2000);
+        setMaxReleaseTime(2000);
+
         _pEnv = pEnv;
         _lastPot0 = pEnv->getAttack();
         _lastEnc0 = pEnv->getDecay();
@@ -31,9 +35,7 @@ public:
         _pot0Lock = true;
         _pot1Lock = true;
 
-        setMaxAttackTime(2000);
-        setMaxDecayTime(2000);
-        setMaxReleaseTime(2000);
+        updeteControl(0, 0, 0, 0);
     }
 
     void lock()
