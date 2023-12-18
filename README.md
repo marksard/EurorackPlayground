@@ -42,7 +42,7 @@ Assumed operating frequency from 0 Hz to around 5 kHz.
 
 ## Image
 
-![img](https://marksard.github.io/assets/photos/20231214_IMGP8479.jpg)
+![img](https://marksard.github.io/assets/photos/20231113_IMGP8382.jpg)
 
 ## Schematic
 
