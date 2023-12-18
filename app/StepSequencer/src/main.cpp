@@ -84,7 +84,7 @@ void dispOLED()
         u8g2.drawStr(0, 2, "SEQ MOV");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>MOV");
-        u8g2.drawStr(52, 8, "E2>---");
+        u8g2.drawStr(52, 8, "E2>RNG");
         u8g2.drawStr(92, 0, "SW>---");
         u8g2.drawStr(92, 8, "P2>---");
         break;
@@ -241,6 +241,7 @@ void loop()
     break;
     case 4:
         sspc.moveSeq(enc0);
+        sspc.addGateKeyEnd(enc1, enc1);
         break;
     case 5:
         sspc.addGateKeyStart(enc0, enc1);
