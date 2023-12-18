@@ -129,6 +129,22 @@ public:
                 _ssm.keyStep.pos.getMax() + max);
     }
 
+    void addGateKeyStart(int8_t gate, int8_t key)
+    {
+        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + gate, 
+                _ssm.gateStep.pos.getMax());
+        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + key, 
+                _ssm.keyStep.pos.getMax());
+    }
+
+    void addGateKeyEnd(int8_t gate, int8_t key)
+    {
+        _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin(), 
+                _ssm.gateStep.pos.getMax() + gate);
+        _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin(), 
+                _ssm.keyStep.pos.getMax() + key);
+    }
+
     void addGateStepMode(int8_t value)
     {
         _ssm.gateStep.addMode(value);        
@@ -164,7 +180,7 @@ public:
             _ssm.keyStep.nextPlayStep();
             _ssm.gateStep.nextPlayStep();
             syncCount++;
-            if (syncCount >= 2)
+            if (syncCount >= 1)
             {
                 gpio_put(GATE_B, HIGH);
                 syncCount = 0;
@@ -231,8 +247,8 @@ public:
         ::generateSequence(&_ssm);
         _ssm.keyStep.setMode(Step::Mode::Forward);
         _ssm.gateStep.setMode(Step::Mode::Forward);
-        _ssm.keyStep.pos.setLimit(0, 16);
-        _ssm.gateStep.pos.setLimit(0, 16);
+        // _ssm.keyStep.pos.setLimit(0, 16);
+        // _ssm.gateStep.pos.setLimit(0, 16);
         _ssm.keyStep.resetPlayStep();
         _ssm.gateStep.resetPlayStep();
         _ssm.printSeq();

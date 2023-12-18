@@ -1,5 +1,5 @@
 /*!
- * StepSeqView
+ * Step Sequencer
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
@@ -89,19 +89,19 @@ void dispOLED()
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 5:
-        u8g2.drawStr(0, 2, "RNG G");
+        u8g2.drawStr(0, 2, "RANGE S");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>STR");
-        u8g2.drawStr(52, 8, "E2>END");
-        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(52, 0, "E1>GAT");
+        u8g2.drawStr(52, 8, "E2>KEY");
+        u8g2.drawStr(92, 0, "SW>RST");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 6:
-        u8g2.drawStr(0, 2, "RNG KEY");
+        u8g2.drawStr(0, 2, "RANGE E");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>STR");
-        u8g2.drawStr(52, 8, "E2>END");
-        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(52, 0, "E1>GAT");
+        u8g2.drawStr(52, 8, "E2>KEY");
+        u8g2.drawStr(92, 0, "SW>RST");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 7:
@@ -243,10 +243,20 @@ void loop()
         sspc.moveSeq(enc0);
         break;
     case 5:
-        sspc.addGateLimit(enc0, enc1);
+        sspc.addGateKeyStart(enc0, enc1);
+        // sspc.addGateLimit(enc0, enc1);
+        if (btn1 == 2)
+        {
+            sspc.reset();
+        }
         break;
     case 6:
-        sspc.addKeyLimit(enc0, enc1);
+        sspc.addGateKeyEnd(enc0, enc1);
+        // sspc.addKeyLimit(enc0, enc1);
+        if (btn1 == 2)
+        {
+            sspc.reset();
+        }
         break;
     case 7:
         sspc.addKeyStepMode(enc0);
