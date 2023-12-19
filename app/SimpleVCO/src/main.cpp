@@ -1,5 +1,5 @@
 /*!
- * SimpleArduinoVCO
+ * SimpleVCO
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
