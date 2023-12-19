@@ -130,8 +130,8 @@ void loop()
         break;
     }
 
-    pwm_set_gpio_level(OUT_B, env[0].getLevel());
-    pwm_set_gpio_level(OUT_A, env[1].getLevel());
+    pwm_set_gpio_level(OUT_A, env[0].getLevel());
+    pwm_set_gpio_level(OUT_B, env[1].getLevel());
 
     sleep_ms(1);
 }

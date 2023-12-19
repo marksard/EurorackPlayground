@@ -36,6 +36,7 @@ public:
         _pot1Lock = true;
 
         updeteControl(0, 0, 0, 0);
+        lock();   
     }
 
     void lock()
