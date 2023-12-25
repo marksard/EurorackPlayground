@@ -29,7 +29,7 @@ public:
         _seqReadyCountMax = 0;
         _syncCount = 0;
         _seqGateOffStep = 0;
-        _ppq = 0;
+        _ppq = 4;
     }
 
     void start()
@@ -91,10 +91,19 @@ public:
         }
     }
 
-    void setPPQ() {}
     uint8_t getBPM() { return _pTrigger->getBPM(); }
-    uint8_t getPPQ() { return _ppq; }
     int8_t getScale() { return _ssm._scaleIndex.get(); }
+
+
+    void addPPQ(int8_t value)
+    {
+        if (value == 0) return;
+        uint8_t ppq = constrain(_ppq + value, 1, 4);
+        _ppq = ppq;
+    }
+
+    void setPPQ(uint8_t value) { _ppq = value;}
+    uint8_t getPPQ() { return _ppq; }
 
     void setSettingPos(int8_t value)
     {
@@ -213,7 +222,8 @@ public:
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
             _syncCount++;
-            if (_syncCount >= 1)
+            // if (_syncCount >= 1)
+            if (_syncCount >= 4 - _ppq)
             {
                 gpio_put(GATE_B, HIGH);
                 _syncCount = 0;

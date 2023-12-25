@@ -112,6 +112,15 @@ void dispOLED()
         u8g2.drawStr(92, 0, "SW>---");
         u8g2.drawStr(92, 8, "P2>---");
         break;
+    case 8:
+        u8g2.drawStr(0, 2, "PPQ");
+        u8g2.setFont(u8g2_font_5x8_tf);
+        u8g2.drawStr(52, 0, "E1>PPQ");
+        u8g2.drawStr(52, 8, "E2>---");
+        sprintf(disp_buf, "-->%03d", sspc.getPPQ());
+        u8g2.drawStr(92, 0, disp_buf);
+        u8g2.drawStr(92, 8, "P2>---");
+        break;
     default:
         // u8g2.setFont(u8g2_font_5x8_tf);
         break;
@@ -185,7 +194,7 @@ void loop()
     uint16_t pot0 = pot[0].analogRead(false);
     uint16_t pot1 = pot[1].analogRead(false);
 
-    menuIndex = map(pot0, 0, 4040, 0, 7);
+    menuIndex = map(pot0, 0, 4040, 0, 8);
 
     switch (menuIndex)
     {
@@ -262,6 +271,9 @@ void loop()
     case 7:
         sspc.addKeyStepMode(enc0);
         sspc.addGateStepMode(enc1);
+        break;
+    case 8:
+        sspc.addPPQ(enc0);
         break;
     default:
         break;
