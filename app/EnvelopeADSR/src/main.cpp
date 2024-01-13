@@ -15,6 +15,12 @@
 #include "EnvelopeADSR.hpp"
 #include "EnvelopeController.hpp"
 
+#define USE_MCP4922
+#ifdef USE_MCP4922
+#include "MCP_DAC.h"
+MCP4922 MCP(&SPI1);
+#endif
+
 // #define TIMER_INTR_TM 62 // us == 16kHz (1/(60sec/(250BPM*3840ticks))
 // static repeating_timer timer;
 
@@ -80,8 +86,15 @@ void setup()
 
     pinMode(GATE_A, INPUT);
     pinMode(GATE_B, INPUT);
+
+#ifdef USE_MCP4922
+    pinMode(PIN_SPI1_SS, OUTPUT);
+    MCP.setSPIspeed(20000000);
+    MCP.begin(PIN_SPI1_SS);
+#else
     initPWM(OUT_A);
     initPWM(OUT_B);
+#endif
 
     Serial.begin(9600);
     // while (!Serial)
@@ -130,10 +143,20 @@ void loop()
         break;
     }
 
-    pwm_set_gpio_level(OUT_A, env[0].getLevel());
-    pwm_set_gpio_level(OUT_B, env[1].getLevel());
+    uint16_t valueA = env[0].getLevel();
+    uint16_t valueB = env[1].getLevel();
 
-    sleep_ms(1);
+#ifdef USE_MCP4922
+    MCP.fastWriteA(valueA);
+    MCP.fastWriteB(valueB);
+    // Serial.println(valueA);
+#else
+    pwm_set_gpio_level(OUT_A, valueA);
+    pwm_set_gpio_level(OUT_B, valueB);
+#endif
+
+    sleep_us(250);
+    // sleep_ms(1);
 }
 
 void setup1()
