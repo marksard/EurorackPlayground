@@ -14,6 +14,13 @@
 #include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
+
+#define USE_MCP4922
+#ifdef USE_MCP4922
+#include "MCP_DAC.h"
+MCP4922 MCP(&SPI1);
+#endif
+
 #include "StepSeqPlayControl.hpp"
 
 #define TIMER_INTR_TM 62 // us == 16kHz (1/(60sec/(250BPM*3840ticks))
@@ -169,8 +176,15 @@ void setup()
 
     pinMode(GATE_A, OUTPUT);
     pinMode(GATE_B, OUTPUT);
+
+#ifdef USE_MCP4922
+    pinMode(PIN_SPI1_SS, OUTPUT);
+    MCP.setSPIspeed(20000000);
+    MCP.begin(PIN_SPI1_SS);
+#else
     initPWM(OUT_A);
     initPWM(OUT_B);
+#endif
 
     Serial.begin(9600);
     // while (!Serial)

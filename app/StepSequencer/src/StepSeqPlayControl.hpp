@@ -14,7 +14,7 @@
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
 
-static float voltPerTone = 4096.0 / 12.0 / 5.0;
+static float voltPerTone = 4095.0 / 12.0 / 5.0;
 
 class StepSeqPlayControl
 {
@@ -217,8 +217,13 @@ public:
         if (_seqReadyCount == 0)
         {
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
+#ifdef USE_MCP4922
+            MCP.fastWriteA(voct);
+            MCP.fastWriteB(voct);
+#else
             pwm_set_gpio_level(OUT_A, voct);
             pwm_set_gpio_level(OUT_B, voct);
+#endif
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
             _syncCount++;
