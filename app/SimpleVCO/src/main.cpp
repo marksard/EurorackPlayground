@@ -14,8 +14,14 @@
 #include "gpio.h"
 #include "Oscillator.hpp"
 
+#define USE_MCP4922
+#ifdef USE_MCP4922
+#include "MCP_DAC.h"
+MCP4922 MCP(&SPI1);
+#endif
+
 #define PWM_RESO 4096
-#define TIMER_INTR_TM 20      // us == 50kHz
+#define TIMER_INTR_TM 25      // us == 40kHz
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 #define MAX_COARSE_FREQ 550
@@ -85,9 +91,16 @@ void initPWM(uint gpio)
 bool intrTimer(struct repeating_timer *t)
 {
     uint16_t valueA = osc[0].getWaveValue();
-    pwm_set_gpio_level(OUT_A, valueA);
     uint16_t valueB = osc[1].getWaveValue();
+
+#ifdef USE_MCP4922
+    MCP.fastWriteA(valueA);
+    MCP.fastWriteB(valueB);
+#else
+    pwm_set_gpio_level(OUT_A, valueA);
     pwm_set_gpio_level(OUT_B, valueB);
+#endif
+
     return true;
 }
 
@@ -105,10 +118,17 @@ void setup()
     osc[1].init(TIMER_INTR_TM);
     vOct.init(GATE_B);
 
-    // 第一引数は負数でコールバック開始-開始間
-    add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
+#ifdef USE_MCP4922
+    pinMode(PIN_SPI1_SS, OUTPUT);
+    MCP.setSPIspeed(20000000);
+    MCP.begin(PIN_SPI1_SS);
+#else
     initPWM(OUT_A);
     initPWM(OUT_B);
+#endif
+
+    // 第一引数は負数でコールバック開始-開始間
+    add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
 }
 
 void loop()
