@@ -68,7 +68,7 @@ void dispOLED()
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>PLY");
         u8g2.drawStr(52, 8, "E2>RST");
-        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(92, 0, "SW>RST");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 2:
@@ -84,8 +84,8 @@ void dispOLED()
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "E1>KEY");
         u8g2.drawStr(52, 8, "E2>GATE");
-        u8g2.drawStr(92, 0, "SW>RST");
-        u8g2.drawStr(92, 8, "P2>STP");
+        u8g2.drawStr(92, 0, "SU>ACC");
+        u8g2.drawStr(92, 8, "SD>CLS");
         break;
     case 4:
         u8g2.drawStr(0, 2, "SEQ MOV");
@@ -192,7 +192,8 @@ void setup()
     // }
     delay(500);
 
-    sspc.generateTestToneSequence();
+    // sspc.generateTestToneSequence();
+    sspc.resetAllStep();
     sspc.setBPM(128, 48);
     sspc.start();
 
@@ -229,6 +230,10 @@ void loop()
         {
             sspc.reset();
         }
+        if (btn0 == 2)
+        {
+            sspc.generateTestToneSequence();
+        }
         break;
     case 2:
         if (enc0 != 0)
@@ -254,7 +259,7 @@ void loop()
         sspc.addGate(enc1);
         if (btn0 == 2)
         {
-            sspc.generateTestToneSequence();
+            sspc.toggleAcc();
         }
         if (btn1 == 2)
         {

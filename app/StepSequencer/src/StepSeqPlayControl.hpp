@@ -129,6 +129,13 @@ public:
         _ssm.setKey(pos, note % MAX_SCALE_KEY);
     }
 
+    void toggleAcc()
+    {
+        uint8_t pos = _settingPos.get();
+        uint8_t current = _ssm.getAcc(pos);
+        _ssm.setAcc(pos, (current + 1) & 1);
+    }
+
     void addGateLimit(int8_t min, int8_t max)
     {
         _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + min,
@@ -200,18 +207,33 @@ public:
         {
             gpio_put(GATE_A, LOW);
             gpio_put(GATE_B, LOW);
+#ifdef USE_MCP4922
+            MCP.fastWriteB(0);
+#else
+            pwm_set_gpio_level(OUT_B, 0);
+#endif
         }
         else if (_seqReadyCount >= _seqGateOffStep * 2 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::H)
         {
             gpio_put(GATE_A, LOW);
             gpio_put(GATE_B, LOW);
+#ifdef USE_MCP4922
+            MCP.fastWriteB(0);
+#else
+            pwm_set_gpio_level(OUT_B, 0);
+#endif
         }
         else if (_seqReadyCount >= _seqGateOffStep &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::S)
         {
             gpio_put(GATE_A, LOW);
             gpio_put(GATE_B, LOW);
+#ifdef USE_MCP4922
+            MCP.fastWriteB(0);
+#else
+            pwm_set_gpio_level(OUT_B, 0);
+#endif
         }
 
         if (_seqReadyCount == 0)
@@ -219,10 +241,10 @@ public:
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
 #ifdef USE_MCP4922
             MCP.fastWriteA(voct);
-            MCP.fastWriteB(voct);
+            // MCP.fastWriteB(voct);
 #else
             pwm_set_gpio_level(OUT_A, voct);
-            pwm_set_gpio_level(OUT_B, voct);
+            // pwm_set_gpio_level(OUT_B, voct);
 #endif
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
@@ -232,6 +254,22 @@ public:
             {
                 gpio_put(GATE_B, HIGH);
                 _syncCount = 0;
+            }
+
+            if (_ssm.getPlayAcc())
+            {
+#ifdef USE_MCP4922
+            MCP.fastWriteB(65535);
+#else
+            pwm_set_gpio_level(OUT_B, 65535);
+#endif
+            }
+            else {
+#ifdef USE_MCP4922
+            MCP.fastWriteB(0);
+#else
+            pwm_set_gpio_level(OUT_B, 0);
+#endif
             }
         }
         _seqReadyCount++;
@@ -246,7 +284,7 @@ public:
         uint8_t gateStart = _ssm.gateStep.pos.getMin();
         uint8_t gateEnd = _ssm.gateStep.pos.getMax();
 
-        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates);
+        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates, (uint8_t*)_ssm._accs);
         _ssv.dispKeyPos(key);
         _ssv.dispGatePos(gate);
         _ssv.dispSettingPos(_settingPos.get());

@@ -234,19 +234,23 @@ public:
     {
         initArray(_keys, MAX_STEP);
         initArray(_octaves, MAX_STEP);
+        initArray(_accs, MAX_STEP);
         initArray((uint8_t *)_gates, MAX_STEP);
         _scaleIndex.set(2);
     }
 
     void setKey(uint8_t step, uint8_t value) { _keys[constrain(step, 0, MAX_STEP)] = value; }
     void setOctave(uint8_t step, uint8_t value) { _octaves[constrain(step, 0, MAX_STEP)] = value; }
+    void setAcc(uint8_t step, uint8_t value) { _accs[constrain(step, 0, MAX_STEP)] = value; }
     void setGate(uint8_t step, StepSeqModel::Gate value) { _gates[constrain(step, 0, MAX_STEP)] = value; }
     uint8_t getKey(uint8_t value) { return _keys[value]; }
     uint8_t getOctave(uint8_t value) { return _octaves[value]; }
+    uint8_t getAcc(uint8_t value) { return _accs[value]; }
     uint8_t getGate(uint8_t value) { return _gates[value]; }
 
     uint8_t getPlayKey() { return _keys[keyStep.pos.get()]; }
     uint8_t getPlayOctave() { return _octaves[keyStep.pos.get()]; }
+    uint8_t getPlayAcc() { return _accs[gateStep.pos.get()]; }
     uint8_t getPlayGate() { return _gates[gateStep.pos.get()]; }
 
     uint8_t getPlayNote() { return (getPlayOctave() * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
@@ -258,32 +262,38 @@ public:
         {
             uint8_t backKey = _keys[0];
             uint8_t backOct = _octaves[0];
+            uint8_t backAcc = _accs[0];
             Gate backGate = _gates[0];
             for (uint8_t i = 0; i < MAX_STEP; ++i)
             {
                 uint8_t destIndex = constrainCyclic(i + 1, 0, (int)MAX_STEP_M1);
                 _keys[i] = _keys[destIndex];
                 _octaves[i] = _octaves[destIndex];
+                _accs[i] = _accs[destIndex];
                 _gates[i] = _gates[destIndex];
             }
             _keys[MAX_STEP_M1] = backKey;
             _octaves[MAX_STEP_M1] = backOct;
+            _accs[MAX_STEP_M1] = backAcc;
             _gates[MAX_STEP_M1] = backGate;
         }
         else
         {
             uint8_t backKey = _keys[MAX_STEP_M1];
             uint8_t backOct = _octaves[MAX_STEP_M1];
+            uint8_t backAcc = _accs[MAX_STEP_M1];
             Gate backGate = _gates[MAX_STEP_M1];
             for (uint8_t i = MAX_STEP_M1; i > 0; --i)
             {
                 uint8_t destIndex = constrainCyclic(i - 1, 0, (int)MAX_STEP_M1);
                 _keys[i] = _keys[destIndex];
                 _octaves[i] = _octaves[destIndex];
+                _accs[i] = _accs[destIndex];
                 _gates[i] = _gates[destIndex];
             }
             _keys[0] = backKey;
             _octaves[0] = backOct;
+            _accs[0] = backAcc;
             _gates[0] = backGate;
         }
     }
@@ -292,6 +302,7 @@ public:
     {
         printArray(_keys, MAX_STEP);
         printArray(_octaves, MAX_STEP);
+        printArray(_accs, MAX_STEP);
         printArray((uint8_t *)_gates, MAX_STEP);
         for (byte i = 0; i < StepSeqModel::MAX_STEP * 3; ++i)
         {
@@ -316,6 +327,9 @@ public:
             Serial.print("Note:");
             Serial.print(getPlayNote());
             Serial.print(", ");
+            Serial.print("Acc:");
+            Serial.print(getPlayAcc());
+            Serial.print(", ");
             Serial.println();
             keyStep.nextPlayStep();
             gateStep.nextPlayStep();
@@ -329,6 +343,7 @@ public:
 public:
     uint8_t _keys[MAX_STEP];
     uint8_t _octaves[MAX_STEP];
+    uint8_t _accs[MAX_STEP];
     StepSeqModel::Gate _gates[MAX_STEP];
     LimitValue<int8_t> _scaleIndex;
 };
@@ -357,6 +372,7 @@ void generateSequence(StepSeqModel *pssm)
         // 0 ~ 24 + スケール音
         pssm->setOctave(i, 1 + (random(-1, 3)));
         pssm->setKey(i, random(MAX_SCALE_KEY));
+        pssm->setAcc(i, gate != StepSeqModel::Gate::_ && random(0, 6) == 1 ? 1 : 0);
     }
 }
 
@@ -376,6 +392,7 @@ void generateTestToneSequence(StepSeqModel *pssm)
         }
         pssm->setOctave(i, (i>>1)%6);
         pssm->setKey(i, 0);
+        pssm->setAcc(i, 0);
      }
 }
 
@@ -390,5 +407,6 @@ void resetSequence(StepSeqModel *pssm)
         pssm->setGate(i, StepSeqModel::Gate::S);
         pssm->setOctave(i, 1);
         pssm->setKey(i, 0);
+        pssm->setAcc(i, 0);
      }
 }

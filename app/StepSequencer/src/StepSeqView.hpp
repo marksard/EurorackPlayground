@@ -19,7 +19,7 @@ public:
         _origin_y = origin_y;
     }
 
-    void dispSteps(uint8_t keyStart, uint8_t keyEnd, uint8_t gateStart, uint8_t gateEnd, uint8_t *pOcts, uint8_t *pKeys, uint8_t *pGates)
+    void dispSteps(uint8_t keyStart, uint8_t keyEnd, uint8_t gateStart, uint8_t gateEnd, uint8_t *pOcts, uint8_t *pKeys, uint8_t *pGates, uint8_t *pAccs)
     {
         static char disp_item[5] = {'-', 'S', 'H', 'L', 'T'};
         for (uint8_t i = 0; i < 16; ++i)
@@ -33,7 +33,9 @@ public:
                          gateInv,
                          pOcts[i],
                          pKeys[i],
-                         disp_item[pGates[i] % 5]);
+                         disp_item[pGates[i] % 5],
+                         pAccs[i] == 1 ? '*' : ' '
+                         );
         }
     }
 
@@ -63,7 +65,7 @@ private:
     uint8_t _origin_x;
     uint8_t _origin_y;
 
-    void dispStepUnit(uint8_t x, uint8_t y, uint8_t keyInv, uint8_t gateInv, uint8_t oct, uint8_t key, uint8_t gate)
+    void dispStepUnit(uint8_t x, uint8_t y, uint8_t keyInv, uint8_t gateInv, uint8_t oct, uint8_t key, uint8_t gate, uint8_t acc)
     {
         static char disp_buf[2] = {0};
         disp_buf[0] = '0' + oct;
@@ -72,6 +74,9 @@ private:
         disp_buf[0] = '0' + key;
         disp_buf[1] = '\0';
         _pU8g2->drawStr(x + 10, y + 1, disp_buf);
+        disp_buf[0] = acc;
+        disp_buf[1] = '\0';
+        _pU8g2->drawStr(x + 2, y + 10, disp_buf);
         disp_buf[0] = gate;
         disp_buf[1] = '\0';
         _pU8g2->drawStr(x + 10, y + 10, disp_buf);
