@@ -22,11 +22,13 @@ public:
     {
         SQU,
         USAW,
+        DSAW,
         TRI,
         SINE,
-        MAX = SINE,
+        NOISE,
+        MAX = NOISE,
     };
-    const char waveName[4][7] = {"SQUARE", "UP-SAW", "TRIANG", " SINE "};
+    const char waveName[6][7] = {"SQUARE", "UP-SAW", "DN-SAW", "TRIANG", " SINE ", "NOISE "};
     // 上位12ビット(0~4095)をindex範囲にする
     const uint32_t indexBit = OSC_WAVE_BIT - OSC_RESO_BIT;
 
@@ -49,6 +51,9 @@ public:
         _halfReso = _reso / 2;
     }
 
+    // value範囲＝DAC、PWM出力範囲：0-4095(12bit)
+    // index範囲：0-4095(12bit)
+    // とした。sine以外は単純な演算のみで済む
     uint16_t getWaveValue()
     {
         _phaseAccum = _phaseAccum + _tuningWordM;
@@ -62,11 +67,17 @@ public:
         case Wave::USAW:
             value = index;
             break;
+        case Wave::DSAW:
+            value = _resom1 - index;
+            break;
         case Wave::TRI:
             value = index < _halfReso ? index * 2 : (_resom1 - index) * 2;
             break;
         case Wave::SINE:
             value = sine_12bit_4096[index];
+            break;
+        case Wave::NOISE:
+            value = random(0, OSC_RESO);
             break;
         default:
             value = 0;
