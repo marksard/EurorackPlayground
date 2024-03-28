@@ -37,7 +37,7 @@ public:
     {
     }
 
-    void init(uint16_t timer_timing)
+    void init(float timer_timing)
     {
         uint32_t reso = OSC_RESO;
         _phaseAccum = 0;

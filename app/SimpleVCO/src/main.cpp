@@ -20,8 +20,9 @@
 MCP4922 MCP(&SPI1);
 #endif
 
+#define SAMPLE_FREQ 32000
 #define PWM_RESO 4096
-#define TIMER_INTR_TM 25      // us == 40kHz
+#define SAMPLE_US (1000000.0 / SAMPLE_FREQ)
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 #define MAX_COARSE_FREQ 550
@@ -32,8 +33,8 @@ static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
 static SmoothAnalogRead vOct;
 
-static repeating_timer timer;
 const static float rateRatio = (float)ADC_RESO / (float)MAX_COARSE_FREQ;
+static uint interruptSliceNum;
 
 Oscillator osc[2];
 
@@ -75,21 +76,9 @@ void dispOLED()
     u8g2.sendBuffer();
 }
 
-void initPWM(uint gpio)
+void  interruptPWM()
 {
-    gpio_set_function(gpio, GPIO_FUNC_PWM);
-    uint potSlice = pwm_gpio_to_slice_num(gpio);
-    // 最速設定（可能な限り高い周波数にしてRCの値をあげることなく平滑な電圧を得たい）
-    // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
-    // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
-    pwm_set_clkdiv(potSlice, 1);
-    // pwm_set_clkdiv(potSlice, 125000000.0 / (PWM_RESO * 10000.0));
-    pwm_set_wrap(potSlice, PWM_RESO - 1);
-    pwm_set_enabled(potSlice, true);
-}
-
-bool intrTimer(struct repeating_timer *t)
-{
+    pwm_clear_irq(interruptSliceNum);
     uint16_t valueA = osc[0].getWaveValue();
     uint16_t valueB = osc[1].getWaveValue();
 
@@ -101,7 +90,36 @@ bool intrTimer(struct repeating_timer *t)
     pwm_set_gpio_level(OUT_B, valueB);
 #endif
 
-    return true;
+    // test
+    // digitalWrite(GATE_A, HIGH);
+    // sleep_us(1);
+    // digitalWrite(GATE_A, LOW);
+}
+
+
+void initPWM(uint gpio, bool interrupt)
+{
+    gpio_set_function(gpio, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(gpio);
+
+    if (interrupt)
+    {
+        interruptSliceNum = slice;
+        pwm_clear_irq(slice);
+        pwm_set_irq_enabled(slice, true);
+        irq_set_exclusive_handler(PWM_IRQ_WRAP, interruptPWM);
+        irq_set_enabled(PWM_IRQ_WRAP, true);
+    }
+
+    // 最速設定（可能な限り高い周波数にしてRCの値をあげることなく平滑な電圧を得たい）
+    // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
+    // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
+    // pwm_set_clkdiv(slice, 125000000.0 / (PWM_RESO * 10000.0));
+    // pwm_set_clkdiv(slice, 1);
+
+    pwm_set_wrap(slice, PWM_RESO - 1);
+    pwm_set_enabled(slice, true);
+    analogWriteFreq(SAMPLE_FREQ);
 }
 
 void setup()
@@ -114,21 +132,22 @@ void setup()
     pot[1].init(POT1);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
-    osc[0].init(TIMER_INTR_TM);
-    osc[1].init(TIMER_INTR_TM);
+    osc[0].init(SAMPLE_US);
+    osc[1].init(SAMPLE_US);
     vOct.init(GATE_B);
+
+    // test
+    // pinMode(GATE_A, OUTPUT);
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
     MCP.setSPIspeed(20000000);
     MCP.begin(PIN_SPI1_SS);
+    initPWM(OUT_A, true);
 #else
-    initPWM(OUT_A);
-    initPWM(OUT_B);
+    initPWM(OUT_A, true);
+    initPWM(OUT_B, false);
 #endif
-
-    // 第一引数は負数でコールバック開始-開始間
-    add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
 }
 
 void loop()
