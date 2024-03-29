@@ -37,6 +37,8 @@ const static float rateRatio = (float)ADC_RESO / (float)MAX_COARSE_FREQ;
 static uint interruptSliceNum;
 
 Oscillator osc[2];
+static int menuIndex = 0;
+static int16_t voctTune = 118;
 
 static uint8_t requiresUpdate = 0;
 
@@ -56,7 +58,6 @@ void initOLED()
     u8g2.setContrast(40);
     u8g2.setFontPosTop();
     u8g2.setDrawColor(2);
-    u8g2.setFont(u8g2_font_7x14B_tf);
     //   u8g2.setFlipMode(1);
 }
 
@@ -68,10 +69,40 @@ void dispOLED()
         return;
     requiresUpdate = 0;
     u8g2.clearBuffer();
-    sprintf(disp_buf, "%s: %s", osc[0].getWaveName(), osc[0].getNoteName());
-    u8g2.drawStr(0, 16, disp_buf);
-    sprintf(disp_buf, "%s: %s", osc[1].getWaveName(), osc[1].getNoteName());
-    u8g2.drawStr(0, 32, disp_buf);
+    // sprintf(disp_buf, "%s: %s", osc[0].getWaveName(), osc[0].getNoteName());
+    // u8g2.drawStr(0, 16, disp_buf);
+    // sprintf(disp_buf, "%s: %s", osc[1].getWaveName(), osc[1].getNoteName());
+    // u8g2.drawStr(0, 32, disp_buf);
+    switch (menuIndex)
+    {
+    case 0:
+        u8g2.setFont(u8g2_font_VCR_OSD_tf);
+        sprintf(disp_buf, "VCO A");
+        u8g2.drawStr(0, 0, disp_buf);
+        sprintf(disp_buf, "%s", osc[0].getNoteName());
+        u8g2.drawStr(0, 48, disp_buf);
+        u8g2.setFont(u8g2_font_logisoso26_tf);
+        sprintf(disp_buf, "%s", osc[0].getWaveName());
+        u8g2.drawStr(0, 16, disp_buf);
+        break;
+    case 1:
+        u8g2.setFont(u8g2_font_VCR_OSD_tf);
+        sprintf(disp_buf, "VCO B");
+        u8g2.drawStr(0, 0, disp_buf);
+        sprintf(disp_buf, "%s", osc[1].getNoteName());
+        u8g2.drawStr(0, 48, disp_buf);
+        u8g2.setFont(u8g2_font_logisoso26_tf);
+        sprintf(disp_buf, "%s", osc[1].getWaveName());
+        u8g2.drawStr(0, 16, disp_buf);
+        break;
+    case 2:
+        u8g2.setFont(u8g2_font_VCR_OSD_tf);
+        sprintf(disp_buf, "V/OCT tune");
+        u8g2.drawStr(0, 0, disp_buf);
+        sprintf(disp_buf, "%d", voctTune);
+        u8g2.drawStr(0, 48, disp_buf);
+        break;
+    }
 
     u8g2.sendBuffer();
 }
@@ -152,31 +183,83 @@ void setup()
 
 void loop()
 {
-    static int16_t voctTune = 118;
+    int8_t enc0 = enc[0].getDirection(true);
+    int8_t enc1 = enc[1].getDirection(true);
+    uint8_t btn0 = buttons[0].getState();
+    uint8_t btn1 = buttons[1].getState();
+    uint16_t pot0 = pot[0].analogRead(false);
+    uint16_t pot1 = pot[1].analogRead(false);
+
+    static uint16_t coarseA = (float)pot0 / rateRatio;
+    static uint16_t coarseB = (float)pot0 / rateRatio;
+    static uint16_t lastPot0 = pot0;
+    static uint8_t unlock = 0;
+    static uint8_t lastMenuIndex = 0;
+
     uint16_t voct = vOct.analogRead(false);
     // pulseWidth = pot[1].analogRead(false);
-    if (buttons[0].getState() == 3)
-    {
-        voctTune = (pot[1].analogRead() / ((float)ADC_RESO / 400.0)) - (400 >> 1);
-    }
     // 0to5VのV/OCTの想定でmap変換。RP2040では抵抗分圧で5V->3.3Vにしておく
     float powVOct = (float)pow(2, map(voct, 0, ADC_RESO - voctTune, 0, DAC_MAX_MILLVOLT) * 0.001);
-
-    uint16_t coarseA = (float)pot[0].analogRead(false) / rateRatio;
     uint16_t freqencyA = coarseA * powVOct;
     osc[0].setFrequency(freqencyA);
-    // OLED描画更新でノイズが乗るので必要時以外更新しない
-    requiresUpdate |= osc[0].setNoteNameFromFrequency(coarseA);
-    requiresUpdate |= osc[0].setWave((Oscillator::Wave)
-        constrainCyclic((int)osc[0].getWave() + (int)enc[0].getDirection(true), 0, (int)Oscillator::Wave::MAX));
-
-    uint16_t coarseB = (float)pot[1].analogRead(false) / rateRatio;
     uint16_t freqencyB = coarseB * powVOct;
     osc[1].setFrequency(freqencyB);
-    // OLED描画更新でノイズが乗るので必要時以外更新しない
-    requiresUpdate |= osc[1].setNoteNameFromFrequency(coarseB);
-    requiresUpdate |= osc[1].setWave((Oscillator::Wave)
-        constrainCyclic((int)osc[1].getWave() + (int)enc[1].getDirection(true), 0, (int)Oscillator::Wave::MAX));
+
+    // メニュー変更時のポットロック・ロック解除
+    if (!unlock)
+    {
+        if (lastPot0+10 < pot0 || lastPot0-10 > pot0)
+        {
+            unlock = 1;
+        }
+    }
+    else
+    {
+        lastPot0 = pot0;
+    }
+
+
+    menuIndex = map(pot1, 0, 4040, 0, 2);
+    if (lastMenuIndex != menuIndex)
+    {
+        unlock = 0;
+        requiresUpdate = 1;
+    }
+    lastMenuIndex = menuIndex;
+
+    switch (menuIndex)
+    {
+    case 0:
+        {
+            if (unlock)
+                coarseA = (float)pot0 / rateRatio;
+            // OLED描画更新でノイズが乗るので必要時以外更新しない
+            requiresUpdate |= osc[0].setNoteNameFromFrequency(coarseA);
+            requiresUpdate |= osc[0].setWave((Oscillator::Wave)
+                constrainCyclic((int)osc[0].getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
+        }
+        break;
+    case 1:
+        {
+            if (unlock)
+                coarseB = (float)pot0 / rateRatio;
+            // OLED描画更新でノイズが乗るので必要時以外更新しない
+            requiresUpdate |= osc[1].setNoteNameFromFrequency(coarseB);
+            requiresUpdate |= osc[1].setWave((Oscillator::Wave)
+                constrainCyclic((int)osc[1].getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
+        }
+        break;
+    case 2:
+        {
+            if (unlock)
+            {
+                int16_t tune = (pot0 / ((float)ADC_RESO / 400.0)) - (400 >> 1);
+                requiresUpdate |= tune != voctTune;
+                voctTune = tune;
+            }
+        }
+        break;
+    }
 
     static uint8_t dispCount = 0;
     dispCount++;
