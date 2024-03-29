@@ -8,6 +8,7 @@
 #pragma once
 #include <Arduino.h>
 #include "sine_12bit_4096.h"
+#include "tri_wavefold_12bit_4096.h"
 #include "note.h"
 
 #define OSC_RESO 4096
@@ -21,14 +22,17 @@ public:
     enum Wave
     {
         SQU,
-        USAW,
-        DSAW,
+        DRAMP,
+        URAMP,
+        SINE_RAMP,
+        PH_RAMP,
         TRI,
+        TRI_FOLD,
         SINE,
         NOISE,
         MAX = NOISE,
     };
-    const char waveName[6][7] = {"SQUARE", "UP-SAW", "DN-SAW", "TRIANG", " SINE ", "NOISE "};
+    const char waveName[Wave::MAX+1][9] = {"SQUARE  ", "DN-RAMP ", "UP-RAMP ", "SI-RAMP ", "PH-RAMP ", "TRIANGLE", "TRI-FOLD", "  SINE  ", "W-NOISE "};
     // 上位12ビット(0~4095)をindex範囲にする
     const uint32_t indexBit = OSC_WAVE_BIT - OSC_RESO_BIT;
 
@@ -41,7 +45,9 @@ public:
     {
         uint32_t reso = OSC_RESO;
         _phaseAccum = 0;
+        _phaseAccum2 = 0;
         _tuningWordM = 0;
+        _tuningWordM2 = 0;
         _wave = Wave::SQU;
         _noteNameIndex = 0;
         _pulseWidth = reso / 2;
@@ -58,26 +64,38 @@ public:
     {
         _phaseAccum = _phaseAccum + _tuningWordM;
         uint32_t index = _phaseAccum >> indexBit;
+        _phaseAccum2 = _phaseAccum2 + _tuningWordM2;
+        uint32_t indexPhase = _phaseAccum2 >> indexBit;
+        uint16_t indexOffset = (index + 3030) % OSC_RESO;
         uint16_t value = 0;
         switch (_wave)
         {
         case Wave::SQU:
             value = index < _pulseWidth ? _resom1 : 0;
             break;
-        case Wave::USAW:
-            value = index;
-            break;
-        case Wave::DSAW:
+        case Wave::DRAMP:
             value = _resom1 - index;
+            break;
+        case Wave::URAMP:
+            value = index;
             break;
         case Wave::TRI:
             value = index < _halfReso ? index * 2 : (_resom1 - index) * 2;
+            break;
+        case Wave::TRI_FOLD:
+            value = tri_wavefold_12bit_4096[index];
             break;
         case Wave::SINE:
             value = sine_12bit_4096[index];
             break;
         case Wave::NOISE:
             value = random(0, OSC_RESO);
+            break;
+        case Wave::SINE_RAMP:
+            value = ((index + sine_12bit_4096[indexOffset]) >> 1) % OSC_RESO;
+            break;
+        case Wave::PH_RAMP:
+            value = ((index * indexPhase) >> 11) % OSC_RESO;
             break;
         default:
             value = 0;
@@ -91,6 +109,7 @@ public:
     {
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
         _tuningWordM = OSC_WAVE_BIT32 * freqency / _intrruptClock;
+        _tuningWordM2 = OSC_WAVE_BIT32 * (freqency+4) / _intrruptClock;
     }
 
     bool setNoteNameFromFrequency(uint16_t freqency)
@@ -123,6 +142,8 @@ public:
 private:
     uint32_t _phaseAccum;
     uint32_t _tuningWordM;
+    uint32_t _phaseAccum2;
+    uint32_t _tuningWordM2;
     Wave _wave;
     uint16_t _pulseWidth;
     uint8_t _noteNameIndex;
