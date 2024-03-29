@@ -106,7 +106,7 @@ public:
     {
         if (min == _min && max == _max) return;
         _min = MAX(min, 0);
-        _max = MIN(max, _limitMax);
+        _max = MAX(MIN(max, _limitMax), _min);
         set(_value);
     }
     vs getMin() { return _min; }
