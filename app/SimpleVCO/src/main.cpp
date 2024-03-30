@@ -32,6 +32,7 @@ static Button buttons[2];
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
 static SmoothAnalogRead vOct;
+static Button gate;
 
 const static float rateRatio = (float)ADC_RESO / (float)MAX_COARSE_FREQ;
 static uint interruptSliceNum;
@@ -166,9 +167,8 @@ void setup()
     osc[0].init(SAMPLE_US);
     osc[1].init(SAMPLE_US);
     vOct.init(GATE_B);
-
-    // test
-    // pinMode(GATE_A, OUTPUT);
+    gate.init(GATE_A);
+    pinMode(GATE_A, INPUT);// buttonクラスでINPUT_PULLUPになるのでとりまハック
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
@@ -204,6 +204,15 @@ void loop()
     osc[0].setFrequency(freqencyA);
     uint16_t freqencyB = coarseB * powVOct;
     osc[1].setFrequency(freqencyB);
+
+
+    uint16_t gt = gate.getState();
+    if (gt == 2)
+    {
+        // map(voct, 0, 4040, 0, Oscillator::Wave::MAX)
+        osc[0].setWave((Oscillator::Wave)random(0, Oscillator::Wave::MAX));
+        requiresUpdate = 1;
+    }
 
     // メニュー変更時のポットロック・ロック解除
     if (!unlock)
@@ -265,16 +274,18 @@ void loop()
     dispCount++;
     if (dispCount == 0)
     {
+        Serial.print(gt);
+        Serial.print(", ");
         Serial.print(voct);
         Serial.print(", ");
-        Serial.print(voctTune);
-        Serial.print(", ");
-        Serial.print(coarseA);
-        Serial.print(", ");
-        Serial.print(freqencyA);
-        Serial.print(", ");
-        Serial.print(osc[0].getWaveName());
-        Serial.print(", ");
+        // Serial.print(voctTune);
+        // Serial.print(", ");
+        // Serial.print(coarseA);
+        // Serial.print(", ");
+        // Serial.print(freqencyA);
+        // Serial.print(", ");
+        // Serial.print(osc[0].getWaveName());
+        // Serial.print(", ");
         Serial.println();
     }
 
