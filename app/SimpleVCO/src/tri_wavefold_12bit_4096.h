@@ -1,3 +1,10 @@
+/*!
+ * Wavetable triangle wavefold 12bit 4096
+ * Copyright 2024 marksard
+ * This software is released under the MIT license.
+ * see https://opensource.org/licenses/MIT
+ */
+
 #pragma once
 #include <Arduino.h>
 const uint16_t tri_wavefold_12bit_4096[4096] = {

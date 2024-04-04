@@ -16,6 +16,51 @@
 #define OSC_WAVE_BIT 32
 #define OSC_WAVE_BIT32 4294967296 // 2^32
 
+template <typename vs = int8_t>
+class LimitValue
+{
+public:
+    LimitValue(vs limitMin, vs limitMax)
+    {
+        _value = 0;
+        _min = 0;
+        _max = 0;
+        _limitMax = limitMax;
+        _limitMin = limitMin;
+        setLimit(_min, _max);
+    }
+
+    LimitValue(vs limitMin, vs limitMax, vs min, vs max)
+    {
+        _value = 0;
+        _limitMax = limitMax;
+        _limitMin = limitMin;
+        setLimit(min, max);
+    }
+
+    void set(vs value) { _value = constrain(value, _min, _max); }
+    vs get() { return _value; }
+    void add(vs value) { _value = constrain(_value + value, _min, _max); }
+
+    void setLimit(vs min, vs max)
+    {
+        if (min == _min && max == _max) return;
+        _min = MIN(MAX(min, _limitMin), _max);
+        _max = MAX(MIN(max, _limitMax), _min);
+        set(_value);
+    }
+    vs getMin() { return _min; }
+    vs getMax() { return _max; }
+    vs getDiff() { return _max - _min; }
+
+private:
+    vs _value;
+    vs _min;
+    vs _max;
+    vs _limitMax;
+    vs _limitMin;
+};
+
 class Oscillator
 {
 public:
@@ -38,6 +83,7 @@ public:
 
 public:
     Oscillator()
+    : _phaseShift(0, 99, 0, 99)
     {
     }
 
@@ -109,8 +155,15 @@ public:
     {
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
         _tuningWordM = OSC_WAVE_BIT32 * freqency / _intrruptClock;
-        _tuningWordM2 = OSC_WAVE_BIT32 * (freqency+4) / _intrruptClock;
+        _tuningWordM2 = OSC_WAVE_BIT32 * (freqency+_phaseShift.get()) / _intrruptClock;
     }
+
+    void addPhaseShift(int8_t phaseShift)
+    {
+        _phaseShift.add(phaseShift);
+    }
+
+    int8_t getPhaseShift() {return _phaseShift.get();}
 
     bool setNoteNameFromFrequency(uint16_t freqency)
     {
@@ -151,4 +204,5 @@ private:
     uint32_t _resom1;
     float _intrruptClock;
     uint16_t _halfReso;
+    LimitValue<int8_t> _phaseShift;
 };
