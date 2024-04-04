@@ -19,15 +19,17 @@ void initEEPROM()
 }
 
 // 設定値系
-const static char *UI_VER = "svco_conf_001\0";
+const static char *UI_VER = "svco_conf_000\0";
 struct UserConfig
 {
     char ver[15];
     int16_t voctTune;
-    int16_t oscA_wave;
-    int16_t oscA_phaseShift;
-    int16_t oscB_wave;
-    int16_t oscB_phaseShift;
+    int16_t oscAWave;
+    int16_t oscAPhaseShift;
+    int16_t oscAFolding;
+    int16_t oscBWave;
+    int16_t oscBPhaseShift;
+    int16_t oscBFolding;
 };
 
 int startUserConfigAddress = 0;
@@ -38,10 +40,12 @@ void initUserConfig(UserConfig *pUserConfig)
 {
     strcpy(pUserConfig->ver, UI_VER);
     pUserConfig->voctTune = 118;
-    pUserConfig->oscA_wave = 0;
-    pUserConfig->oscA_phaseShift = 5;
-    pUserConfig->oscB_wave = 0;
-    pUserConfig->oscB_phaseShift = 5;
+    pUserConfig->oscAWave = 0;
+    pUserConfig->oscAPhaseShift = 5;
+    pUserConfig->oscAFolding = 0;
+    pUserConfig->oscBWave = 0;
+    pUserConfig->oscBPhaseShift = 5;
+    pUserConfig->oscBFolding = 0;
 }
 
 void loadUserConfig(UserConfig *pUserConfig)

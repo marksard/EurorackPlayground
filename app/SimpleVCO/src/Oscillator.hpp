@@ -84,6 +84,7 @@ public:
 public:
     Oscillator()
     : _phaseShift(0, 99, 0, 99)
+    , _folding(0, 20, 0, 20)
     {
     }
 
@@ -127,12 +128,14 @@ public:
             break;
         case Wave::TRI:
             value = index < _halfReso ? index * 2 : (_resom1 - index) * 2;
+            value = applyEzFolding(value);
             break;
         case Wave::TRI_FOLD:
             value = tri_wavefold_12bit_4096[index];
             break;
         case Wave::SINE:
             value = sine_12bit_4096[index];
+            value = applyEzFolding(value);
             break;
         case Wave::NOISE:
             value = random(0, OSC_RESO);
@@ -164,6 +167,13 @@ public:
     }
 
     int8_t getPhaseShift() {return _phaseShift.get();}
+
+    void addFolding(int8_t folding)
+    {
+        _folding.add(folding);
+    }
+
+    int8_t getFolding() {return (_folding.get());}
 
     bool setNoteNameFromFrequency(uint16_t freqency)
     {
@@ -205,4 +215,13 @@ private:
     float _intrruptClock;
     uint16_t _halfReso;
     LimitValue<int8_t> _phaseShift;
+    LimitValue<int8_t> _folding;
+
+    uint16_t applyEzFolding(uint16_t value)
+    {
+        if (value > (_resom1 - (_folding.get() * 50))) value = (_resom1 - (_folding.get() * 50)) - (value - (_resom1 - (_folding.get() * 50)));
+        if (value < (_folding.get() * 50)) value = (_folding.get() * 50) + ((_folding.get() * 50) - value);
+        value = map(value, (_folding.get() * 50), (_resom1 - (_folding.get() * 50)), 0, _resom1);
+        return value;
+    }
 };

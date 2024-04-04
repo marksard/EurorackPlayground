@@ -82,9 +82,13 @@ void dispOLED()
         {
             sprintf(disp_buf, "%s p:%02d", osc[0].getNoteName(), osc[0].getPhaseShift());
         }
-        else
+        else if (osc[0].getWave() == Oscillator::Wave::TRI ||
+        osc[0].getWave() == Oscillator::Wave::SINE)
         {
-            sprintf(disp_buf, "%s", osc[0].getNoteName());
+            sprintf(disp_buf, "%s f:%02d", osc[0].getNoteName(), osc[0].getFolding());
+        }
+        else{
+            sprintf(disp_buf, "%s", osc[1].getNoteName());
         }
         u8g2.drawStr(0, 48, disp_buf);
         u8g2.setFont(u8g2_font_logisoso26_tf);
@@ -99,8 +103,12 @@ void dispOLED()
         {
             sprintf(disp_buf, "%s p:%02d", osc[1].getNoteName(), osc[1].getPhaseShift());
         }
-        else
+        else if (osc[1].getWave() == Oscillator::Wave::TRI ||
+        osc[1].getWave() == Oscillator::Wave::SINE)
         {
+            sprintf(disp_buf, "%s f:%02d", osc[1].getNoteName(), osc[1].getFolding());
+        }
+        else{
             sprintf(disp_buf, "%s", osc[1].getNoteName());
         }
         u8g2.drawStr(0, 48, disp_buf);
@@ -194,10 +202,12 @@ void setup()
 
     initEEPROM();
     loadUserConfig(&userConfig);
-    osc[0].setWave((Oscillator::Wave)userConfig.oscA_wave);
-    osc[0].addPhaseShift(userConfig.oscA_phaseShift);
-    osc[1].setWave((Oscillator::Wave)userConfig.oscB_wave);
-    osc[1].addPhaseShift(userConfig.oscB_phaseShift);
+    osc[0].setWave((Oscillator::Wave)userConfig.oscAWave);
+    osc[0].addPhaseShift(userConfig.oscAPhaseShift);
+    osc[0].addFolding(userConfig.oscAFolding);
+    osc[1].setWave((Oscillator::Wave)userConfig.oscBWave);
+    osc[1].addPhaseShift(userConfig.oscBPhaseShift);
+    osc[1].addFolding(userConfig.oscBFolding);
 }
 
 void loop()
@@ -266,12 +276,19 @@ void loop()
         requiresUpdate |= osc[0].setWave((Oscillator::Wave)
                                              constrainCyclic((int)osc[0].getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
 
-        userConfig.oscA_wave = osc[0].getWave();
-        if (userConfig.oscA_wave == Oscillator::Wave::PH_RAMP)
+        userConfig.oscAWave = osc[0].getWave();
+        if (userConfig.oscAWave == Oscillator::Wave::PH_RAMP)
         {
             osc[0].addPhaseShift((int)enc1);
-            requiresUpdate |= userConfig.oscA_phaseShift != osc[0].getPhaseShift();
-            userConfig.oscA_phaseShift = osc[0].getPhaseShift();
+            requiresUpdate |= userConfig.oscAPhaseShift != osc[0].getPhaseShift();
+            userConfig.oscAPhaseShift = osc[0].getPhaseShift();
+        }
+        else if (userConfig.oscAWave == Oscillator::Wave::TRI ||
+        userConfig.oscAWave == Oscillator::Wave::SINE)
+        {
+            osc[0].addFolding((int)enc1);
+            requiresUpdate |= userConfig.oscAFolding != osc[0].getFolding();
+            userConfig.oscAFolding = osc[0].getFolding();
         }
     }
     break;
@@ -286,12 +303,19 @@ void loop()
         requiresUpdate |= osc[1].setWave((Oscillator::Wave)
                                              constrainCyclic((int)osc[1].getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
 
-        userConfig.oscB_wave = osc[1].getWave();
-        if (userConfig.oscB_wave == Oscillator::Wave::PH_RAMP)
+        userConfig.oscBWave = osc[1].getWave();
+        if (userConfig.oscBWave == Oscillator::Wave::PH_RAMP)
         {
             osc[1].addPhaseShift((int)enc1);
-            requiresUpdate |= userConfig.oscB_phaseShift != osc[1].getPhaseShift();
-            userConfig.oscB_phaseShift = osc[1].getPhaseShift();
+            requiresUpdate |= userConfig.oscBPhaseShift != osc[1].getPhaseShift();
+            userConfig.oscBPhaseShift = osc[1].getPhaseShift();
+        }
+        else if (userConfig.oscBWave == Oscillator::Wave::TRI ||
+        userConfig.oscBWave == Oscillator::Wave::SINE)
+        {
+            osc[1].addFolding((int)enc1);
+            requiresUpdate |= userConfig.oscBFolding != osc[1].getFolding();
+            userConfig.oscBFolding = osc[1].getFolding();
         }
     }
     break;
