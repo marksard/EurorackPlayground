@@ -30,6 +30,8 @@ public:
         _syncCount = 0;
         _seqGateOffStep = 0;
         _ppq = 4;
+        _requestGenerateSequence = false;
+        _requestResetAllSequence = false;
     }
 
     void start()
@@ -60,11 +62,6 @@ public:
     {
         _ssm.keyStep.setMode(Step::Mode::Forward);
         _ssm.gateStep.setMode(Step::Mode::Forward);
-    }
-
-    void resetAllStep()
-    {
-        ::resetSequence(&_ssm);
     }
 
     void setSyncMode()
@@ -98,7 +95,7 @@ public:
     void addPPQ(int8_t value)
     {
         if (value == 0) return;
-        uint8_t ppq = constrain(_ppq + value, 1, 4);
+        uint8_t ppq = constrain(_ppq + value, 1 , 4);
         _ppq = ppq;
     }
 
@@ -238,6 +235,20 @@ public:
 
         if (_seqReadyCount == 0)
         {
+            if (_ssm.gateStep.pos.getMin() == _ssm.gateStep.pos.get())
+            {
+                if (_requestGenerateSequence)
+                {
+                    _requestGenerateSequence = false;
+                    generateSequence();
+                }
+                else if (_requestResetAllSequence)
+                {
+                    _requestResetAllSequence = false;
+                    resetAllSequence();
+                }
+            }
+
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
 #ifdef USE_MCP4922
             MCP.fastWriteA(voct);
@@ -248,12 +259,11 @@ public:
 #endif
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
-            _syncCount++;
-            // if (_syncCount >= 1)
-            if (_syncCount >= 4 - _ppq)
+            _syncCount--;
+            if (_syncCount < 0)
             {
                 gpio_put(GATE_B, HIGH);
-                _syncCount = 0;
+                _syncCount = 4 - _ppq;
             }
 
             if (_ssm.getPlayAcc())
@@ -292,11 +302,30 @@ public:
 
     void generateTestToneSequence()
     {
+        _syncCount = 0;
+        _seqReadyCount = 0;
         ::generateTestToneSequence(&_ssm);
+    }
+
+    void requestGenerateSequence()
+    {
+        _requestGenerateSequence = true;
+    }
+
+    void requestResetAllSequence()
+    {
+        _requestResetAllSequence = true;
+    }
+
+    void resetAllSequence()
+    {
+        _syncCount = 0;
+        ::resetSequence(&_ssm);
     }
 
     void generateSequence()
     {
+        _syncCount = 0;
         _seqReadyCount = 0;
         ::generateSequence(&_ssm);
         _ssm.keyStep.setMode(Step::Mode::Forward);
@@ -307,7 +336,7 @@ public:
         _ssm.gateStep.resetPlayStep();
         _ssm.printSeq();
     }
-
+    
     void setLimitStepAtRandom()
     {
         _ssm.keyStep.resetPlayStep();
@@ -327,9 +356,12 @@ private:
 
     uint8_t _seqReadyCount;
     uint8_t _seqReadyCountMax;
-    uint8_t _syncCount;
+    int8_t _syncCount;
     float _seqGateOffStep;
     LimitValue<int8_t> _settingPos;
+
+    bool _requestGenerateSequence;
+    bool _requestResetAllSequence;
 
     uint8_t _ppq;
 };

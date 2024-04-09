@@ -66,9 +66,9 @@ void dispOLED()
     case 1:
         u8g2.drawStr(0, 2, "PLY/STP");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>PLY");
-        u8g2.drawStr(52, 8, "E2>RST");
-        u8g2.drawStr(92, 0, "SW>RST");
+        u8g2.drawStr(52, 0, "E1>P/S");
+        u8g2.drawStr(52, 8, "E2>---");
+        u8g2.drawStr(92, 0, "SW>TST");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 2:
@@ -193,7 +193,7 @@ void setup()
     delay(500);
 
     // sspc.generateTestToneSequence();
-    sspc.resetAllStep();
+    sspc.requestResetAllSequence();
     sspc.setBPM(128, 48);
     sspc.start();
 
@@ -225,9 +225,6 @@ void loop()
         else if (enc0 < 0)
         {
             sspc.stop();
-        }
-        if (enc1 >= 1)
-        {
             sspc.reset();
         }
         if (btn0 == 2)
@@ -237,12 +234,12 @@ void loop()
         break;
     case 2:
         if (enc0 != 0)
-            sspc.generateSequence();
+            sspc.requestGenerateSequence();
         if (enc1 != 0)
             sspc.setLimitStepAtRandom();
         if (btn0 == 2)
         {
-            sspc.resetAllStep();
+            sspc.requestResetAllSequence();
         }
         if (btn1 == 2)
         {
@@ -263,7 +260,7 @@ void loop()
         }
         if (btn1 == 2)
         {
-            sspc.resetAllStep();
+            sspc.requestResetAllSequence();
         }
     }
     break;
