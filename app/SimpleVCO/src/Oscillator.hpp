@@ -88,7 +88,7 @@ public:
     {
     }
 
-    void init(float timer_timing)
+    void init(float clock)
     {
         uint32_t reso = OSC_RESO;
         _phaseAccum = 0;
@@ -97,11 +97,11 @@ public:
         _tuningWordM2 = 0;
         _wave = Wave::SQU;
         _noteNameIndex = 0;
-        _pulseWidth = reso / 2;
+        _pulseWidth = reso >> 1;
         _reso = reso;
         _resom1 = reso -1;
-        _intrruptClock = 1000000.0 / (float)timer_timing; // == 1sec / 10us == 1000000us / 10us == 100kHz
-        _halfReso = _reso / 2;
+        _intrruptClock = clock;
+        _halfReso = _reso >> 1;
     }
 
     // value範囲＝DAC、PWM出力範囲：0-4095(12bit)

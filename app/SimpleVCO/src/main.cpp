@@ -21,9 +21,9 @@
 MCP4922 MCP(&SPI1);
 #endif
 
-#define SAMPLE_FREQ 32000
+#define SAMPLE_FREQ 88200
+// #define SAMPLE_FREQ 120000 一応この辺までいける
 #define PWM_RESO 4096
-#define SAMPLE_US (1000000.0 / SAMPLE_FREQ)
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 #define MAX_COARSE_FREQ 550
@@ -88,7 +88,7 @@ void dispOLED()
             sprintf(disp_buf, "%s f:%02d", osc[0].getNoteName(), osc[0].getFolding());
         }
         else{
-            sprintf(disp_buf, "%s", osc[1].getNoteName());
+            sprintf(disp_buf, "%s", osc[0].getNoteName());
         }
         u8g2.drawStr(0, 48, disp_buf);
         u8g2.setFont(u8g2_font_logisoso26_tf);
@@ -143,6 +143,7 @@ void dispOLED()
 void interruptPWM()
 {
     pwm_clear_irq(interruptSliceNum);
+    // digitalWrite(GATE_A, HIGH);
     uint16_t valueA = osc[0].getWaveValue();
     uint16_t valueB = osc[1].getWaveValue();
 
@@ -153,25 +154,37 @@ void interruptPWM()
     pwm_set_gpio_level(OUT_A, valueA);
     pwm_set_gpio_level(OUT_B, valueB);
 #endif
+    // digitalWrite(GATE_A, LOW);
 }
 
-void initPWM(uint gpio, bool interrupt)
+// OUT_A/Bとは違うPWMチャンネルのPWM割り込みにすること
+void initPWMIntr(uint gpio)
 {
     gpio_set_function(gpio, GPIO_FUNC_PWM);
     uint slice = pwm_gpio_to_slice_num(gpio);
 
-    if (interrupt)
-    {
-        interruptSliceNum = slice;
-        pwm_clear_irq(slice);
-        pwm_set_irq_enabled(slice, true);
-        irq_set_exclusive_handler(PWM_IRQ_WRAP, interruptPWM);
-        irq_set_enabled(PWM_IRQ_WRAP, true);
-    }
+    interruptSliceNum = slice;
+    pwm_clear_irq(slice);
+    pwm_set_irq_enabled(slice, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, interruptPWM);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
 
+    // 割り込み回数をRESOの1/4にして、サンプルレートを上げられるように
+    uint32_t reso = (PWM_RESO >> 2);
+    pwm_set_wrap(slice, reso - 1);
+    pwm_set_enabled(slice, true);
+    // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
+    pwm_set_clkdiv(slice, 125000000.0 / (reso * SAMPLE_FREQ));
+}
+
+void initPWM(uint gpio)
+{
+    gpio_set_function(gpio, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(gpio);
     pwm_set_wrap(slice, PWM_RESO - 1);
     pwm_set_enabled(slice, true);
-    analogWriteFreq(SAMPLE_FREQ);
+    // 最速にして滑らかなPWMを得る
+    pwm_set_clkdiv(slice, 1);
 }
 
 void setup()
@@ -184,20 +197,22 @@ void setup()
     pot[1].init(POT1);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
-    osc[0].init(SAMPLE_US);
-    osc[1].init(SAMPLE_US);
+    osc[0].init(SAMPLE_FREQ);
+    osc[1].init(SAMPLE_FREQ);
     vOct.init(GATE_B);
     gate.init(GATE_A);
     pinMode(GATE_A, INPUT); // buttonクラスでINPUT_PULLUPになるのでとりまハック
+    // pinMode(GATE_A, OUTPUT);
+
+    initPWMIntr(PWM_INTR_PIN);
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
     MCP.setSPIspeed(20000000);
     MCP.begin(PIN_SPI1_SS);
-    initPWM(OUT_A, true);
 #else
-    initPWM(OUT_A, true);
-    initPWM(OUT_B, false);
+    initPWM(OUT_A);
+    initPWM(OUT_B);
 #endif
 
     initEEPROM();
@@ -216,7 +231,7 @@ void loop()
     int8_t enc1 = enc[1].getDirection(true);
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
-    uint16_t pot0 = pot[0].analogRead(false);
+    uint16_t pot0 = pot[0].analogRead(true);
     uint16_t pot1 = pot[1].analogRead(false);
 
     static uint16_t coarseA = (float)pot0 / rateRatio;
