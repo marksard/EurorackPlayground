@@ -21,8 +21,8 @@
 MCP4922 MCP(&SPI1);
 #endif
 
-#define SAMPLE_FREQ 88200
-// #define SAMPLE_FREQ 120000 一応この辺までいける
+// #define SAMPLE_FREQ 88200
+#define SAMPLE_FREQ 120000 //一応この辺までいける
 #define PWM_RESO 4096
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
@@ -33,13 +33,16 @@ static Button buttons[2];
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
 static SmoothAnalogRead vOct;
-static Button gate;
+static SmoothAnalogRead gate;
 
 const static float rateRatio = (float)ADC_RESO / (float)MAX_COARSE_FREQ;
+const static float foldRatio = (float)ADC_RESO / (float)100;
+const static float waveRatio = (float)ADC_RESO / (float)(Oscillator::Wave::MAX+1);
 static uint interruptSliceNum;
 
 Oscillator osc[2];
 static int menuIndex = 0;
+static uint8_t externalInMode = 0;
 static bool saveConfirm = false;
 static UserConfig userConfig;
 
@@ -76,7 +79,7 @@ void dispOLED()
     {
     case 0:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "VCO A");
+        sprintf(disp_buf, "VCO A  cv:%d", externalInMode);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[0].getWave() == Oscillator::Wave::PH_RAMP)
         {
@@ -97,7 +100,7 @@ void dispOLED()
         break;
     case 1:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "VCO B");
+        sprintf(disp_buf, "VCO B  cv:%d", externalInMode);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[1].getWave() == Oscillator::Wave::PH_RAMP)
         {
@@ -189,6 +192,12 @@ void initPWM(uint gpio)
 
 void setup()
 {
+    // Serial.begin(9600);
+    // while (!Serial)
+    // {
+    // }
+    // delay(500);
+
     analogReadResolution(12);
 
     enc[0].init(ENC0A, ENC0B);
@@ -201,7 +210,6 @@ void setup()
     osc[1].init(SAMPLE_FREQ);
     vOct.init(GATE_B);
     gate.init(GATE_A);
-    pinMode(GATE_A, INPUT); // buttonクラスでINPUT_PULLUPになるのでとりまハック
     // pinMode(GATE_A, OUTPUT);
 
     initPWMIntr(PWM_INTR_PIN);
@@ -241,7 +249,7 @@ void loop()
     static uint8_t lastMenuIndex = 0;
 
     uint16_t voct = vOct.analogRead(false);
-    // pulseWidth = pot[1].analogRead(false);
+    uint16_t externalIn = gate.analogRead(false);
     // 0to5VのV/OCTの想定でmap変換。RP2040では抵抗分圧で5V->3.3Vにしておく
     float powVOct = (float)pow(2, map(voct, 0, ADC_RESO - userConfig.voctTune, 0, DAC_MAX_MILLVOLT) * 0.001);
     uint16_t freqencyA = coarseA * powVOct;
@@ -249,12 +257,23 @@ void loop()
     uint16_t freqencyB = coarseB * powVOct;
     osc[1].setFrequency(freqencyB);
 
-    uint16_t gt = gate.getState();
-    if (gt == 2)
+
+    if (btn0 == 4)
     {
-        // map(voct, 0, 4040, 0, Oscillator::Wave::MAX)
-        osc[0].setWave((Oscillator::Wave)random(0, Oscillator::Wave::MAX));
+        externalInMode = (externalInMode + 1) % 3;
+        Serial.println(externalInMode);
         requiresUpdate = 1;
+    }
+    if (externalInMode == 1)
+    {
+        uint16_t shift = externalIn / waveRatio;
+        osc[0].setWave((Oscillator::Wave)shift);
+    }
+    else if (externalInMode == 2)
+    {
+        uint16_t shift = externalIn / foldRatio;
+        osc[0].setFolding(shift);
+        osc[0].setPhaseShift(shift);
     }
 
     // メニュー変更時のポットロック・ロック解除
