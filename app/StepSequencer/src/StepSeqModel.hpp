@@ -87,6 +87,7 @@ public:
         _value = 0;
         _min = 0;
         _max = 0;
+        _limitMin = 0;
         _limitMax = limitMax;
         setLimit(_min, _max);
     }
@@ -94,6 +95,15 @@ public:
     LimitValue(vs limitMax, vs min, vs max)
     {
         _value = 0;
+        _limitMin = 0;
+        _limitMax = limitMax;
+        setLimit(min, max);
+    }
+
+    LimitValue(vs limitMin, vs limitMax, vs min, vs max)
+    {
+        _value = 0;
+        _limitMin = limitMin;
         _limitMax = limitMax;
         setLimit(min, max);
     }
@@ -105,7 +115,7 @@ public:
     void setLimit(vs min, vs max)
     {
         if (min == _min && max == _max) return;
-        _min = MAX(min, 0);
+        _min = MAX(min, _limitMin);
         _max = MAX(MIN(max, _limitMax), _min);
         set(_value);
     }
@@ -117,6 +127,7 @@ private:
     vs _value;
     vs _min;
     vs _max;
+    vs _limitMin;
     vs _limitMax;
 };
 
@@ -219,7 +230,7 @@ public:
         S, // Short
         H, // Half
         L, // Long
-        T, // Tie
+        G, // Glide
         Max,
     };
 
@@ -230,7 +241,9 @@ public:
     };
 
 public:
-    StepSeqModel() : _scaleIndex(MAX_SCALES_M1, 0, MAX_SCALES_M1)
+    StepSeqModel()
+    : _scaleIndex(MAX_SCALES_M1, 0, MAX_SCALES_M1)
+    , gateLenAdder((int8_t)Gate::G * -1, (int8_t)Gate::G, (int8_t)Gate::G * -1, (int8_t)Gate::G)
     {
         initArray(_keys, MAX_STEP);
         initArray(_octaves, MAX_STEP);
@@ -251,7 +264,7 @@ public:
     uint8_t getPlayKey() { return _keys[keyStep.pos.get()]; }
     uint8_t getPlayOctave() { return _octaves[keyStep.pos.get()]; }
     uint8_t getPlayAcc() { return _accs[gateStep.pos.get()]; }
-    uint8_t getPlayGate() { return _gates[gateStep.pos.get()]; }
+    uint8_t getPlayGate() { return constrain(_gates[gateStep.pos.get()] + gateLenAdder.get(), 0, (uint8_t)Gate::G); }
 
     uint8_t getPlayNote() { return (getPlayOctave() * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
 
@@ -339,6 +352,7 @@ public:
 public:
     Step keyStep;
     Step gateStep;
+    LimitValue<int8_t> gateLenAdder;
 
 public:
     uint8_t _keys[MAX_STEP];
@@ -358,7 +372,7 @@ void generateSequence(StepSeqModel *pssm)
     {
         // タイミングマップにランダムでタイミングをorして足す
         StepSeqModel::Gate gate = gateMap[geteSelect][i] == 1 ? 
-        (StepSeqModel::Gate)random(StepSeqModel::Gate::H, StepSeqModel::Gate::Max) : 
+        (StepSeqModel::Gate)random(StepSeqModel::Gate::L, StepSeqModel::Gate::Max) : 
         StepSeqModel::Gate::_;
         pssm->setGate(i, gate);
 
@@ -385,7 +399,7 @@ void generateTestToneSequence(StepSeqModel *pssm)
     {
         if (i < 11)
         {
-            pssm->setGate(i, i&1?StepSeqModel::Gate::_ : StepSeqModel::Gate::T);
+            pssm->setGate(i, i&1?StepSeqModel::Gate::_ : StepSeqModel::Gate::G);
         }
         else{
             pssm->setGate(i, i&1?StepSeqModel::Gate::S : StepSeqModel::Gate::H);
@@ -404,9 +418,21 @@ void resetSequence(StepSeqModel *pssm)
 
     for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
     {
-        pssm->setGate(i, StepSeqModel::Gate::S);
+        pssm->setGate(i, StepSeqModel::Gate::L);
         pssm->setOctave(i, 1);
         pssm->setKey(i, 0);
+        pssm->setAcc(i, 0);
+     }
+}
+
+void resetGate(StepSeqModel *pssm)
+{
+    Serial.println("resetGate\n");
+    byte geteSelect = random(MAX_GATE_TIMINGS);
+
+    for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
+    {
+        pssm->setGate(i, StepSeqModel::Gate::L);
         pssm->setAcc(i, 0);
      }
 }

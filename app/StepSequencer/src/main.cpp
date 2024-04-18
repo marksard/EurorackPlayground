@@ -56,8 +56,8 @@ void dispOLED()
     case 0:
         u8g2.drawStr(0, 2, "BPM/SCL");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>BPM");
-        u8g2.drawStr(52, 8, "E2>SCL");
+        u8g2.drawStr(52, 0, "BPM   ");
+        u8g2.drawStr(52, 8, "SCALE ");
         sprintf(disp_buf, "-->%03d", sspc.getBPM());
         u8g2.drawStr(92, 0, disp_buf);
         sprintf(disp_buf, "-->%s", scale[sspc.getScale()]);
@@ -66,64 +66,65 @@ void dispOLED()
     case 1:
         u8g2.drawStr(0, 2, "PLY/STP");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>P/S");
-        u8g2.drawStr(52, 8, "E2>---");
-        u8g2.drawStr(92, 0, "SW>TST");
+        u8g2.drawStr(52, 0, "CW:PLY");
+        u8g2.drawStr(52, 8, "------");
+        u8g2.drawStr(92, 0, "SW:TST");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 2:
         u8g2.drawStr(0, 2, "SEQ RND");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>SEQ");
-        u8g2.drawStr(52, 8, "E2>RANG");
-        u8g2.drawStr(92, 0, "SW>RST");
-        u8g2.drawStr(92, 8, "P2>---");
+        u8g2.drawStr(52, 0, "ADDLEN ");
+        u8g2.drawStr(52, 8, "RSTLEN ");
+        u8g2.drawStr(92, 0, "SW->RND");
+        sprintf(disp_buf,   "LEN>% 1d", sspc.getGateLen());
+        u8g2.drawStr(92, 8, disp_buf);
         break;
     case 3:
         u8g2.drawStr(0, 2, "KEY EDT");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>KEY");
-        u8g2.drawStr(52, 8, "E2>GATE");
-        u8g2.drawStr(92, 0, "SU>ACC");
-        u8g2.drawStr(92, 8, "SD>CLS");
+        u8g2.drawStr(52, 0, "KEY   ");
+        u8g2.drawStr(52, 8, "GATE  ");
+        u8g2.drawStr(92, 0, "ACC   ");
+        u8g2.drawStr(92, 8, "P2>---");
         break;
     case 4:
         u8g2.drawStr(0, 2, "SEQ MOV");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>MOV");
-        u8g2.drawStr(52, 8, "E2>RNG");
-        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(52, 0, "MOVE  ");
+        u8g2.drawStr(52, 8, "RANGE ");
+        u8g2.drawStr(92, 0, "RESET ");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 5:
         u8g2.drawStr(0, 2, "RANGE S");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>GAT");
-        u8g2.drawStr(52, 8, "E2>KEY");
-        u8g2.drawStr(92, 0, "SW>RST");
+        u8g2.drawStr(52, 0, "KEY S");
+        u8g2.drawStr(52, 8, "GATE S");
+        u8g2.drawStr(92, 0, "RESET ");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 6:
         u8g2.drawStr(0, 2, "RANGE E");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>GAT");
-        u8g2.drawStr(52, 8, "E2>KEY");
-        u8g2.drawStr(92, 0, "SW>RST");
+        u8g2.drawStr(52, 0, "KEY  E");
+        u8g2.drawStr(52, 8, "GATE E");
+        u8g2.drawStr(92, 0, "RESET ");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 7:
         u8g2.drawStr(0, 2, "DIR PLY");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>KEY");
-        u8g2.drawStr(52, 8, "E2>GATE");
-        u8g2.drawStr(92, 0, "SW>---");
+        u8g2.drawStr(52, 0, "KEY DIR");
+        u8g2.drawStr(52, 8, "GAT DIR");
+        u8g2.drawStr(92, 0, "------");
         u8g2.drawStr(92, 8, "P2>---");
         break;
     case 8:
         u8g2.drawStr(0, 2, "PPQ");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "E1>PPQ");
-        u8g2.drawStr(52, 8, "E2>---");
+        u8g2.drawStr(52, 0, "PPQ   ");
+        u8g2.drawStr(52, 8, "------");
         sprintf(disp_buf, "-->%03d", sspc.getPPQ());
         u8g2.drawStr(92, 0, disp_buf);
         u8g2.drawStr(92, 8, "P2>---");
@@ -233,15 +234,24 @@ void loop()
         }
         break;
     case 2:
-        if (enc0 != 0)
-            sspc.requestGenerateSequence();
+        sspc.addGateLen(enc0);
         if (enc1 != 0)
-            sspc.setLimitStepAtRandom();
+        {
+            sspc.requestResetGate();
+        }        
         if (btn0 == 2)
+        {
+            sspc.requestGenerateSequence();
+        }
+        if (btn0 == 4)
         {
             sspc.requestResetAllSequence();
         }
         if (btn1 == 2)
+        {
+            sspc.setLimitStepAtRandom();
+        }
+        if (btn1 == 4)
         {
             sspc.resetMode();
             sspc.resetRange();
@@ -258,27 +268,25 @@ void loop()
         {
             sspc.toggleAcc();
         }
-        if (btn1 == 2)
-        {
-            sspc.requestResetAllSequence();
-        }
     }
     break;
     case 4:
         sspc.moveSeq(enc0);
         sspc.addGateKeyEnd(enc1, enc1);
+        if (btn1 == 2)
+        {
+            sspc.reset();
+        }
         break;
     case 5:
-        sspc.addGateKeyStart(enc0, enc1);
-        // sspc.addGateLimit(enc0, enc1);
+        sspc.addGateKeyStart(enc1, enc0);
         if (btn1 == 2)
         {
             sspc.reset();
         }
         break;
     case 6:
-        sspc.addGateKeyEnd(enc0, enc1);
-        // sspc.addKeyLimit(enc0, enc1);
+        sspc.addGateKeyEnd(enc1, enc0);
         if (btn1 == 2)
         {
             sspc.reset();

@@ -32,6 +32,7 @@ public:
         _ppq = 4;
         _requestGenerateSequence = false;
         _requestResetAllSequence = false;
+        _requestResetGate = false;
     }
 
     void start()
@@ -113,7 +114,7 @@ public:
         uint8_t current = _ssm.getGate(pos);
         _ssm.setGate(pos,
         (StepSeqModel::Gate)constrain((current + value),
-            StepSeqModel::Gate::_, StepSeqModel::Gate::T));
+            StepSeqModel::Gate::_, StepSeqModel::Gate::G));
     }
 
     void addNote(int8_t value)
@@ -182,6 +183,16 @@ public:
         _ssm.moveSeq(value > 0 ? StepSeqModel::SeqMove::RIGHT : StepSeqModel::SeqMove::LEFT);
     }
 
+    void addGateLen(int8_t value)
+    {
+        _ssm.gateLenAdder.add(value);
+    }
+
+    int8_t getGateLen()
+    {
+        return _ssm.gateLenAdder.get();
+    }
+
     void updateProcedure()
     {
         if (!_pTrigger->ready())
@@ -242,10 +253,15 @@ public:
                     _requestGenerateSequence = false;
                     generateSequence();
                 }
-                else if (_requestResetAllSequence)
+                if (_requestResetAllSequence)
                 {
                     _requestResetAllSequence = false;
                     resetAllSequence();
+                }
+                if (_requestResetGate)
+                {
+                    _requestResetGate = false;
+                    resetGate();
                 }
             }
 
@@ -294,7 +310,7 @@ public:
         uint8_t gateStart = _ssm.gateStep.pos.getMin();
         uint8_t gateEnd = _ssm.gateStep.pos.getMax();
 
-        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates, (uint8_t*)_ssm._accs);
+        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates, (uint8_t*)_ssm._accs, _ssm.gateLenAdder.get());
         _ssv.dispKeyPos(key);
         _ssv.dispGatePos(gate);
         _ssv.dispSettingPos(_settingPos.get());
@@ -317,10 +333,21 @@ public:
         _requestResetAllSequence = true;
     }
 
+    void requestResetGate()
+    {
+        _requestResetGate = true;
+    }
+
     void resetAllSequence()
     {
         _syncCount = 0;
         ::resetSequence(&_ssm);
+    }
+
+    void resetGate()
+    {
+        _syncCount = 0;
+        ::resetGate(&_ssm);
     }
 
     void generateSequence()
@@ -362,6 +389,7 @@ private:
 
     bool _requestGenerateSequence;
     bool _requestResetAllSequence;
+    bool _requestResetGate;
 
     uint8_t _ppq;
 };

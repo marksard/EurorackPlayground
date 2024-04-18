@@ -19,21 +19,22 @@ public:
         _origin_y = origin_y;
     }
 
-    void dispSteps(uint8_t keyStart, uint8_t keyEnd, uint8_t gateStart, uint8_t gateEnd, uint8_t *pOcts, uint8_t *pKeys, uint8_t *pGates, uint8_t *pAccs)
+    void dispSteps(uint8_t keyStart, uint8_t keyEnd, uint8_t gateStart, uint8_t gateEnd, uint8_t *pOcts, uint8_t *pKeys, uint8_t *pGates, uint8_t *pAccs, int8_t gateLenAdder)
     {
-        static char disp_item[5] = {'-', 'S', 'H', 'L', 'T'};
+        static char disp_item[5] = {'-', 'S', 'H', 'L', 'G'};
         for (uint8_t i = 0; i < 16; ++i)
         {
             uint8_t x = pos2X(i);
             uint8_t y = pos2Y(i);
             uint8_t keyInv = i >= keyStart && i <= keyEnd ? 1 : 0;
             uint8_t gateInv = i >= gateStart && i <= gateEnd ? 1 : 0;
+            uint8_t gate = constrain(pGates[i] + gateLenAdder, 0, 4);
             dispStepUnit(x, y,
                          keyInv,
                          gateInv,
                          pOcts[i],
                          pKeys[i],
-                         disp_item[pGates[i] % 5],
+                         disp_item[gate],
                          pAccs[i] == 1 ? '*' : ' '
                          );
         }
