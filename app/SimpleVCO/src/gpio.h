@@ -21,7 +21,6 @@
 #define OUT_B D0 // dc out
 #endif
 
-#define PWM_RESO 4096
 #define PWM_INTR_PIN D25 // D0/D1ピンとPWMチャンネルがかぶらないように
 
 #define ENC0A D2

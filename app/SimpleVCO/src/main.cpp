@@ -21,7 +21,9 @@
 MCP4922 MCP(&SPI1);
 #endif
 
-#define SAMPLE_FREQ 192000
+#define SAMPLE_FREQ 122070.3125
+// #define SAMPLE_FREQ 192000
+// #define SAMPLE_FREQ 244140.625
 #define PWM_RESO 2048
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
@@ -260,7 +262,6 @@ void loop()
     if (btn0 == 4)
     {
         externalInMode = (externalInMode + 1) % 3;
-        Serial.println(externalInMode);
         requiresUpdate = 1;
     }
     if (externalInMode == 1)
@@ -388,18 +389,18 @@ void loop()
     // dispCount++;
     // if (dispCount == 0)
     // {
-    //     Serial.print(gt);
+    //     Serial.print(externalIn);
     //     Serial.print(", ");
     //     Serial.print(voct);
     //     Serial.print(", ");
-    //     // Serial.print(voctTune);
-    //     // Serial.print(", ");
-    //     // Serial.print(coarseA);
-    //     // Serial.print(", ");
-    //     // Serial.print(freqencyA);
-    //     // Serial.print(", ");
-    //     // Serial.print(osc[0].getWaveName());
-    //     // Serial.print(", ");
+    //     Serial.print(userConfig.voctTune);
+    //     Serial.print(", ");
+    //     Serial.print(coarseA);
+    //     Serial.print(", ");
+    //     Serial.print(freqencyA);
+    //     Serial.print(", ");
+    //     Serial.print(osc[0].getWaveName());
+    //     Serial.print(", ");
     //     Serial.println();
     // }
 

@@ -157,8 +157,8 @@ public:
     void setFrequency(uint16_t freqency)
     {
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
-        _tuningWordM = OSC_WAVE_BIT32 * freqency / _interruptClock;
-        _tuningWordM2 = OSC_WAVE_BIT32 * (freqency+_phaseShift.get()) / _interruptClock;
+        _tuningWordM = OSC_WAVE_BIT32 * ((float)freqency / _interruptClock);
+        _tuningWordM2 = OSC_WAVE_BIT32 * ((float)(freqency+_phaseShift.get()) / _interruptClock);
     }
 
     void addPhaseShift(int8_t value)
