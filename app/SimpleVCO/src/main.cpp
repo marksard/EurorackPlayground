@@ -15,15 +15,14 @@
 #include "Oscillator.hpp"
 #include "EepromData.h"
 
-#define USE_MCP4922
+// #define USE_MCP4922
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
 MCP4922 MCP(&SPI1);
 #endif
 
-// #define SAMPLE_FREQ 88200
-#define SAMPLE_FREQ 120000 //一応この辺までいける
-#define PWM_RESO 4096
+#define SAMPLE_FREQ 192000
+#define PWM_RESO 2048
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 #define MAX_COARSE_FREQ 550

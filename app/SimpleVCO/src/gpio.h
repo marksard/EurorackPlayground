@@ -8,7 +8,7 @@
 #pragma once
 #include <Arduino.h>
 
-// #define rev100
+#define rev100
 #ifdef rev100
 #define GATE_A A2 // gate
 #define GATE_B A3 // v/oct
