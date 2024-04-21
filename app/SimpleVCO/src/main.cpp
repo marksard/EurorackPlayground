@@ -80,7 +80,7 @@ void dispOLED()
     {
     case 0:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "VCO A  cv:%d", externalInMode);
+        sprintf(disp_buf, "VCO A cv:%d", externalInMode);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[0].getWave() == Oscillator::Wave::PH_RAMP)
         {
@@ -101,7 +101,7 @@ void dispOLED()
         break;
     case 1:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "VCO B  cv:%d", externalInMode);
+        sprintf(disp_buf, "VCO B cv:%d", externalInMode);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[1].getWave() == Oscillator::Wave::PH_RAMP)
         {
