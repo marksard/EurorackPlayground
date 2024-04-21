@@ -267,13 +267,13 @@ void loop()
     if (externalInMode == 1)
     {
         uint16_t shift = externalIn / waveRatio;
-        osc[0].setWave((Oscillator::Wave)shift);
+        requiresUpdate |= osc[0].setWave((Oscillator::Wave)shift);
     }
     else if (externalInMode == 2)
     {
         uint16_t shift = externalIn / foldRatio;
-        osc[0].setFolding(shift);
-        osc[0].setPhaseShift(shift);
+        requiresUpdate |= osc[0].setFolding(shift);
+        requiresUpdate |= osc[0].setPhaseShift(shift);
     }
 
     // メニュー変更時のポットロック・ロック解除

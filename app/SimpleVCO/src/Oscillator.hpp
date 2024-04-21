@@ -166,9 +166,11 @@ public:
         _phaseShift.add(value);
     }
 
-    void setPhaseShift(int8_t value)
+    bool setPhaseShift(int8_t value)
     {
+        bool result = _phaseShift.get() != value;
         _phaseShift.set(value);
+        return result;
     }
 
     int8_t getPhaseShift() {return _phaseShift.get();}
@@ -178,9 +180,11 @@ public:
         _folding.add(value);
     }
 
-    void setFolding(int8_t value)
+    bool setFolding(int8_t value)
     {
+        bool result = _folding.get() != value;
         _folding.set(value);
+        return result;
     }
 
     int8_t getFolding() {return (_folding.get());}
