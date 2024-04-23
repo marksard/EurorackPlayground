@@ -9,12 +9,19 @@
 #include <Arduino.h>
 #include "note.h"
 
-#include "sine_10bit_4096.h"
 #define WAVE_LENGTH 4096
 #define WAVE_LENGTH_BIT 12
-#define WAVE_INDEX_DIV_BIT 1
 
+#ifdef USE_MCP4922
+#include "sine_12bit_4096.h"
+#define WAVE_INDEX_DIV_BIT 0
+#define WAVE_HEIGHT 4096
+#else
+#include "sine_11bit_4096.h"
+#define WAVE_INDEX_DIV_BIT 1
 #define WAVE_HEIGHT 2048
+#endif
+
 #define OSC_WAVE_BIT 32
 #define OSC_WAVE_BIT32 4294967296 // 2^32
 
@@ -134,14 +141,22 @@ public:
             value = applyEzFolding(value);
             break;
         case Wave::SINE:
-            value = sine_10bit[index];
+#ifdef USE_MCP4922
+            value = sine_12bit[index];
+#else
+            value = sine_11bit[index];
+#endif
             value = applyEzFolding(value);
             break;
         case Wave::NOISE:
             value = random(0, WAVE_HEIGHT);
             break;
         case Wave::SINE_RAMP:
-            value = ((indexHeight + sine_10bit[indexOffset]) >> 1) % WAVE_HEIGHT;
+#ifdef USE_MCP4922
+            value = ((indexHeight + sine_12bit[indexOffset]) >> 1) % WAVE_HEIGHT;
+#else
+            value = ((indexHeight + sine_11bit[indexOffset]) >> 1) % WAVE_HEIGHT;
+#endif
             break;
         case Wave::PH_RAMP:
             value = ((indexHeight * indexPhase) >> 11) % WAVE_HEIGHT;

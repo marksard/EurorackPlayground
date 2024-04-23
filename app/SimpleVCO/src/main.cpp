@@ -5,6 +5,7 @@
  * see https://opensource.org/licenses/MIT
  */
 
+// #define USE_MCP4922
 #include <Arduino.h>
 #include <hardware/pwm.h>
 #include <U8g2lib.h>
@@ -15,15 +16,14 @@
 #include "Oscillator.hpp"
 #include "EepromData.h"
 
-// #define USE_MCP4922
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
 MCP4922 MCP(&SPI1);
+#define SAMPLE_FREQ 30517.578125
+#else
+#define SAMPLE_FREQ 122070.3125
 #endif
 
-#define SAMPLE_FREQ 122070.3125
-// #define SAMPLE_FREQ 192000
-// #define SAMPLE_FREQ 244140.625
 #define PWM_RESO 2048
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
@@ -147,7 +147,7 @@ void dispOLED()
 void interruptPWM()
 {
     pwm_clear_irq(interruptSliceNum);
-    // digitalWrite(GATE_A, HIGH);
+    // gpio_put(GATE_A, HIGH);
     uint16_t valueA = osc[0].getWaveValue();
     uint16_t valueB = osc[1].getWaveValue();
 
@@ -158,7 +158,7 @@ void interruptPWM()
     pwm_set_gpio_level(OUT_A, valueA);
     pwm_set_gpio_level(OUT_B, valueB);
 #endif
-    // digitalWrite(GATE_A, LOW);
+    // gpio_put(GATE_A, LOW);
 }
 
 // OUT_A/Bとは違うPWMチャンネルのPWM割り込みにすること
@@ -213,8 +213,6 @@ void setup()
     gate.init(GATE_A);
     // pinMode(GATE_A, OUTPUT);
 
-    initPWMIntr(PWM_INTR_PIN);
-
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
     MCP.setSPIspeed(20000000);
@@ -223,6 +221,8 @@ void setup()
     initPWM(OUT_A);
     initPWM(OUT_B);
 #endif
+
+    initPWMIntr(PWM_INTR_PIN);
 
     initEEPROM();
     loadUserConfig(&userConfig);
