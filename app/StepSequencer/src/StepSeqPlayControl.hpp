@@ -33,6 +33,7 @@ public:
         _requestGenerateSequence = false;
         _requestResetAllSequence = false;
         _requestResetGate = false;
+        _auto_generative = false;
     }
 
     void start()
@@ -193,6 +194,16 @@ public:
         return _ssm.gateLenAdder.get();
     }
 
+    void setAutoGenerative(int8_t value)
+    {
+        _auto_generative = value ? true : false;
+    }
+
+    int8_t getAutoGenerative()
+    {
+        return _auto_generative ? 1 : 0;
+    }
+
     void updateProcedure()
     {
         if (!_pTrigger->ready())
@@ -262,6 +273,11 @@ public:
                 {
                     _requestResetGate = false;
                     resetGate();
+                }
+                if (_auto_generative)
+                {
+                    generateSequence(false);
+                    setLimitStepAtRandom();
                 }
             }
 
@@ -350,9 +366,10 @@ public:
         ::resetGate(&_ssm);
     }
 
-    void generateSequence()
+    void generateSequence(bool resetSyncCount = true)
     {
-        _syncCount = 0;
+        if (resetSyncCount)
+            _syncCount = 0;
         _seqReadyCount = 0;
         ::generateSequence(&_ssm);
         _ssm.keyStep.setMode(Step::Mode::Forward);
@@ -390,6 +407,7 @@ private:
     bool _requestGenerateSequence;
     bool _requestResetAllSequence;
     bool _requestResetGate;
+    bool _auto_generative;
 
     uint8_t _ppq;
 };

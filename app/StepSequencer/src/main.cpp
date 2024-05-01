@@ -67,9 +67,10 @@ void dispOLED()
         u8g2.drawStr(0, 2, "PLY/STP");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "CW:PLY");
-        u8g2.drawStr(52, 8, "------");
-        u8g2.drawStr(92, 0, "SW:TST");
-        u8g2.drawStr(92, 8, "P2>---");
+        u8g2.drawStr(52, 8, "CC:STP");
+        u8g2.drawStr(92, 0, "AUTOGEN");
+        sprintf(disp_buf, "-->%s", sspc.getAutoGenerative() ? "ON" : "OFF");
+        u8g2.drawStr(92, 8, disp_buf);
         break;
     case 2:
         u8g2.drawStr(0, 2, "SEQ RND");
@@ -230,7 +231,11 @@ void loop()
         }
         if (btn0 == 2)
         {
-            sspc.generateTestToneSequence();
+            sspc.setAutoGenerative(1);
+        }
+        if (btn1 == 2)
+        {
+            sspc.setAutoGenerative(0);
         }
         break;
     case 2:
