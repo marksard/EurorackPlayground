@@ -16,18 +16,26 @@
 #include "Oscillator.hpp"
 #include "EepromData.h"
 
-#ifdef USE_MCP4922
-#include "MCP_DAC.h"
-MCP4922 MCP(&SPI1);
-#define SAMPLE_FREQ 30517.578125
-#else
-#define SAMPLE_FREQ 122070.3125
-#endif
+// #define CPU_CLOCK 125000000.0
+#define CPU_CLOCK 133000000.0 // 標準めいっぱい
+#define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
 
-#define PWM_RESO 2048
+#define INTR_PWM_RESO 1024
+#define PWM_RESO 2048 // 11bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 #define MAX_COARSE_FREQ 550
+
+#ifdef USE_MCP4922
+#include "MCP_DAC.h"
+MCP4922 MCP(&SPI1);
+// pwm_set_clkdivの演算で結果的に3
+// SPI処理が重めのため3
+#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 3)
+#else
+// pwm_set_clkdivの演算で結果的に1
+#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
+#endif
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 static Button buttons[2];
@@ -173,12 +181,11 @@ void initPWMIntr(uint gpio)
     irq_set_exclusive_handler(PWM_IRQ_WRAP, interruptPWM);
     irq_set_enabled(PWM_IRQ_WRAP, true);
 
-    // 割り込み回数をRESOの1/4にして、サンプルレートを上げられるように
-    uint32_t reso = (PWM_RESO >> 2);
-    pwm_set_wrap(slice, reso - 1);
+    // 割り込み頻度
+    pwm_set_wrap(slice, INTR_PWM_RESO - 1);
     pwm_set_enabled(slice, true);
-    // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
-    pwm_set_clkdiv(slice, 125000000.0 / (reso * SAMPLE_FREQ));
+    // clockdiv = 125MHz / (INTR_PWM_RESO * 欲しいfreq)
+    pwm_set_clkdiv(slice, CPU_CLOCK / (INTR_PWM_RESO * SAMPLE_FREQ));
 }
 
 void initPWM(uint gpio)
@@ -215,7 +222,7 @@ void setup()
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
-    MCP.setSPIspeed(20000000);
+    MCP.setSPIspeed(SPI_CLOCK);
     MCP.begin(PIN_SPI1_SS);
 #else
     initPWM(OUT_A);
@@ -240,7 +247,7 @@ void loop()
     int8_t enc1 = enc[1].getDirection(true);
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
-    uint16_t pot0 = pot[0].analogRead(true);
+    uint16_t pot0 = pot[0].analogRead(false);
     uint16_t pot1 = pot[1].analogRead(false);
 
     static uint16_t coarseA = (float)pot0 / rateRatio;
@@ -404,7 +411,7 @@ void loop()
     //     Serial.println();
     // }
 
-    sleep_us(1);
+    sleep_us(50); // 20kHz
 }
 
 void setup1()
