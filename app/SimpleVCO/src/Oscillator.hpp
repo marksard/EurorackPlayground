@@ -110,6 +110,7 @@ public:
         _heightM1 = WAVE_HEIGHT -1;
         _interruptClock = clock;
         // _halfReso = _reso >> 1;
+        _frequency = 0.0;
     }
 
     // value範囲＝DAC、PWM出力範囲：0-4095(12bit)
@@ -169,11 +170,11 @@ public:
         return value;
     }
 
-    void setFrequency(float freqency)
+    void setFrequency(float frequency)
     {
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
-        _tuningWordM = OSC_WAVE_BIT32 * ((float)freqency / _interruptClock);
-        _tuningWordM2 = OSC_WAVE_BIT32 * ((float)(freqency+_phaseShift.get()) / _interruptClock);
+        _tuningWordM = OSC_WAVE_BIT32 * ((float)frequency / _interruptClock);
+        _tuningWordM2 = OSC_WAVE_BIT32 * ((float)(frequency+_phaseShift.get()) / _interruptClock);
     }
 
     void addPhaseShift(int8_t value)
@@ -204,12 +205,12 @@ public:
 
     int8_t getFolding() {return (_folding.get());}
 
-    bool setNoteNameFromFrequency(uint16_t freqency)
+    bool setNoteNameFromFrequency(float frequency)
     {
         uint8_t noteNameIndex = 0;
         for (int i = 127; i >= 0; --i)
         {
-            if (noteFreq[i] <= (float)freqency)
+            if (noteFreq[i] <= frequency)
             {
                 noteNameIndex = i + 1;
                 break;
@@ -217,6 +218,17 @@ public:
         }
         bool result = _noteNameIndex != noteNameIndex;
         _noteNameIndex = noteNameIndex;
+        return result;
+    }
+
+    bool setFreqName(float frequency)
+    {
+        bool result = false;
+        if (frequency > (_frequency + 0.1) || frequency < (_frequency - 0.1))
+        {
+            result = true;
+            _frequency = frequency;
+        }
         return result;
     }
 
@@ -230,6 +242,17 @@ public:
     Wave getWave() { return _wave; }
     const char *getWaveName() { return waveName[_wave]; }
     const char *getNoteName() { return noteName[_noteNameIndex]; }
+
+    const char *getNoteNameOrFreq(bool freqName = true)
+    {
+        if (freqName)
+        {
+            sprintf(_freqName, "%5.1f", _frequency);
+            return _freqName;
+        }
+
+        return noteName[_noteNameIndex];
+    }
 
 private:
     uint32_t _phaseAccum;
@@ -246,6 +269,8 @@ private:
     uint16_t _halfReso;
     LimitValue<int8_t> _phaseShift;
     LimitValue<int8_t> _folding;
+    char _freqName[8];
+    float _frequency;
 
     uint16_t applyEzFolding(uint16_t value)
     {

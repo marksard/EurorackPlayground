@@ -30,6 +30,9 @@ struct UserConfig
     int16_t oscBWave;
     int16_t oscBPhaseShift;
     int16_t oscBFolding;
+    int8_t cvAssigned;
+    int8_t rangeMode;
+    int8_t biasMode;
 };
 
 int startUserConfigAddress = 0;
@@ -46,6 +49,9 @@ void initUserConfig(UserConfig *pUserConfig)
     pUserConfig->oscBWave = 0;
     pUserConfig->oscBPhaseShift = 5;
     pUserConfig->oscBFolding = 0;
+    pUserConfig->cvAssigned = 0;
+    pUserConfig->rangeMode = 0;
+    pUserConfig->biasMode = 0;
 }
 
 void loadUserConfig(UserConfig *pUserConfig)

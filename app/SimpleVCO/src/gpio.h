@@ -27,8 +27,8 @@
 
 // rev100改専用
 #ifndef USE_MCP4922
-#define AC_BIAS D12 // SPIのピンを使用
-#define DC_BIAS D13
+#define OUT_A_BIAS D13
+#define OUT_B_BIAS D12 // SPIのピンを使用
 #endif
 #define EXTRA_GATE D9
 

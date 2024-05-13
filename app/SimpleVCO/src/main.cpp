@@ -45,7 +45,6 @@ static RotaryEncoder enc[2];
 static SmoothAnalogRead vOct;
 static SmoothAnalogRead gate;
 
-static int8_t lfoMode = 0;
 static float rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
 
 const static float foldRatio = (float)ADC_RESO / (float)100;
@@ -79,6 +78,7 @@ void initOLED()
     //   u8g2.setFlipMode(1);
 }
 
+static char modeDisp[2][4] = { "VCO", "LFO" };
 void dispOLED()
 {
     static char disp_buf[33] = {0};
@@ -91,19 +91,19 @@ void dispOLED()
     {
     case 0:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "VCO A cv:%d", externalInMode);
+        sprintf(disp_buf, "%s A cv:%d", modeDisp[userConfig.rangeMode], externalInMode);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[0].getWave() == Oscillator::Wave::PH_RAMP)
         {
-            sprintf(disp_buf, "%s p:%02d", osc[0].getNoteName(), osc[0].getPhaseShift());
+            sprintf(disp_buf, "%s p:%02d", osc[0].getNoteNameOrFreq(userConfig.rangeMode), osc[0].getPhaseShift());
         }
         else if (osc[0].getWave() == Oscillator::Wave::TRI ||
         osc[0].getWave() == Oscillator::Wave::SINE)
         {
-            sprintf(disp_buf, "%s f:%02d", osc[0].getNoteName(), osc[0].getFolding());
+            sprintf(disp_buf, "%s f:%02d", osc[0].getNoteNameOrFreq(userConfig.rangeMode), osc[0].getFolding());
         }
         else{
-            sprintf(disp_buf, "%s", osc[0].getNoteName());
+            sprintf(disp_buf, "%s", osc[0].getNoteNameOrFreq(userConfig.rangeMode));
         }
         u8g2.drawStr(0, 48, disp_buf);
         u8g2.setFont(u8g2_font_logisoso26_tf);
@@ -112,19 +112,19 @@ void dispOLED()
         break;
     case 1:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "VCO B cv:%d", externalInMode);
+        sprintf(disp_buf, "%s B cv:%d", modeDisp[userConfig.rangeMode], externalInMode);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[1].getWave() == Oscillator::Wave::PH_RAMP)
         {
-            sprintf(disp_buf, "%s p:%02d", osc[1].getNoteName(), osc[1].getPhaseShift());
+            sprintf(disp_buf, "%s p:%02d", osc[1].getNoteNameOrFreq(userConfig.rangeMode), osc[1].getPhaseShift());
         }
         else if (osc[1].getWave() == Oscillator::Wave::TRI ||
         osc[1].getWave() == Oscillator::Wave::SINE)
         {
-            sprintf(disp_buf, "%s f:%02d", osc[1].getNoteName(), osc[1].getFolding());
+            sprintf(disp_buf, "%s f:%02d", osc[1].getNoteNameOrFreq(userConfig.rangeMode), osc[1].getFolding());
         }
         else{
-            sprintf(disp_buf, "%s", osc[1].getNoteName());
+            sprintf(disp_buf, "%s", osc[1].getNoteNameOrFreq(userConfig.rangeMode));
         }
         u8g2.drawStr(0, 48, disp_buf);
         u8g2.setFont(u8g2_font_logisoso26_tf);
@@ -132,18 +132,22 @@ void dispOLED()
         u8g2.drawStr(0, 16, disp_buf);
         break;
     case 2:
-        u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "LFO MODE");
+        u8g2.setFont(u8g2_font_profont22_tf);
+        sprintf(disp_buf, "SETTINGS 1");
         u8g2.drawStr(0, 0, disp_buf);
-        sprintf(disp_buf, "%d", lfoMode);
-        u8g2.drawStr(0, 48, disp_buf);
+        sprintf(disp_buf, "VCLFO: %s", userConfig.rangeMode ? "ON": "OFF");
+        u8g2.drawStr(0, 16, disp_buf);
+        sprintf(disp_buf, "CV->: %s", userConfig.cvAssigned ? "B": "A");
+        u8g2.drawStr(0, 32, disp_buf);
         break;
     case 3:
-        u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "V/OCT tune");
+        u8g2.setFont(u8g2_font_profont22_tf);
+        sprintf(disp_buf, "SETTINGS 2");
         u8g2.drawStr(0, 0, disp_buf);
-        sprintf(disp_buf, "%d", userConfig.voctTune);
-        u8g2.drawStr(0, 48, disp_buf);
+        sprintf(disp_buf, "VOtune:%d", userConfig.voctTune);
+        u8g2.drawStr(0, 16, disp_buf);
+        sprintf(disp_buf, "BIAS: %s", userConfig.biasMode ? "UNI": "BI");
+        u8g2.drawStr(0, 32, disp_buf);
         break;
     }
 
@@ -230,22 +234,6 @@ void setup()
     gate.init(GATE_A);
     // pinMode(GATE_A, OUTPUT);
 
-#ifdef USE_MCP4922
-    pinMode(PIN_SPI1_SS, OUTPUT);
-    MCP.setSPIspeed(SPI_CLOCK);
-    MCP.begin(PIN_SPI1_SS);
-#else
-    pinMode(AC_BIAS, OUTPUT);
-    pinMode(DC_BIAS, OUTPUT);
-    digitalWrite(AC_BIAS, HIGH);
-    digitalWrite(DC_BIAS, HIGH);
-
-    initPWM(OUT_A);
-    initPWM(OUT_B);
-#endif
-
-    initPWMIntr(PWM_INTR_PIN);
-
     initEEPROM();
     loadUserConfig(&userConfig);
     osc[0].setWave((Oscillator::Wave)userConfig.oscAWave);
@@ -254,6 +242,31 @@ void setup()
     osc[1].setWave((Oscillator::Wave)userConfig.oscBWave);
     osc[1].addPhaseShift(userConfig.oscBPhaseShift);
     osc[1].addFolding(userConfig.oscBFolding);
+
+    if (userConfig.rangeMode)
+    {
+        rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+    }
+    else
+    {
+        rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+    }
+
+#ifdef USE_MCP4922
+    pinMode(PIN_SPI1_SS, OUTPUT);
+    MCP.setSPIspeed(SPI_CLOCK);
+    MCP.begin(PIN_SPI1_SS);
+#else
+    pinMode(OUT_A_BIAS, OUTPUT);
+    pinMode(OUT_B_BIAS, OUTPUT);
+    digitalWrite(OUT_A_BIAS, userConfig.biasMode ? LOW : HIGH);
+    digitalWrite(OUT_B_BIAS, userConfig.biasMode ? LOW : HIGH);
+
+    initPWM(OUT_A);
+    initPWM(OUT_B);
+#endif
+
+    initPWMIntr(PWM_INTR_PIN);
 }
 
 void loop()
@@ -281,6 +294,9 @@ void loop()
     osc[1].setFrequency(freqencyB);
 
 
+    int8_t updateCVindex = 0;
+    if (userConfig.cvAssigned) updateCVindex = 1;
+
     if (btn0 == 4)
     {
         externalInMode = (externalInMode + 1) % 3;
@@ -289,13 +305,13 @@ void loop()
     if (externalInMode == 1)
     {
         uint16_t shift = externalIn / waveRatio;
-        requiresUpdate |= osc[0].setWave((Oscillator::Wave)shift);
+        requiresUpdate |= osc[updateCVindex].setWave((Oscillator::Wave)shift);
     }
     else if (externalInMode == 2)
     {
         uint16_t shift = externalIn / foldRatio;
-        requiresUpdate |= osc[0].setFolding(shift);
-        requiresUpdate |= osc[0].setPhaseShift(shift);
+        requiresUpdate |= osc[updateCVindex].setFolding(shift);
+        requiresUpdate |= osc[updateCVindex].setPhaseShift(shift);
     }
 
     // メニュー変更時のポットロック・ロック解除
@@ -331,6 +347,8 @@ void loop()
         requiresUpdate |= osc[0].setNoteNameFromFrequency(coarseA);
         requiresUpdate |= osc[0].setWave((Oscillator::Wave)
                                              constrainCyclic((int)osc[0].getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
+        if (userConfig.rangeMode)
+            requiresUpdate |= osc[0].setFreqName(coarseA);
 
         userConfig.oscAWave = osc[0].getWave();
         if (userConfig.oscAWave == Oscillator::Wave::PH_RAMP)
@@ -358,6 +376,8 @@ void loop()
         requiresUpdate |= osc[1].setNoteNameFromFrequency(coarseB);
         requiresUpdate |= osc[1].setWave((Oscillator::Wave)
                                              constrainCyclic((int)osc[1].getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
+        if (userConfig.rangeMode)
+            requiresUpdate |= osc[1].setFreqName(coarseB);
 
         userConfig.oscBWave = osc[1].getWave();
         if (userConfig.oscBWave == Oscillator::Wave::PH_RAMP)
@@ -377,10 +397,10 @@ void loop()
     break;
     case 2:
     {
-        int8_t mode = constrainCyclic((int)lfoMode + (int)enc0, 0, 2);
-        requiresUpdate |= lfoMode != mode;
-        lfoMode = mode;
-        if (lfoMode)
+        int8_t mode = constrain((int)userConfig.rangeMode + (int)enc0, 0, 1);
+        requiresUpdate |= userConfig.rangeMode != mode;
+        userConfig.rangeMode = mode;
+        if (userConfig.rangeMode)
         {
             rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
         }
@@ -388,17 +408,26 @@ void loop()
         {
             rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
         }
-
+        int8_t cvb = constrain((int)userConfig.cvAssigned + (int)enc1, 0, 1);
+        requiresUpdate |= userConfig.cvAssigned != mode;
+        userConfig.cvAssigned = cvb;
     }
     break;
     case 3:
     {
-        if (unlock)
+        int16_t tune = constrain(userConfig.voctTune + (int)enc0, -200, 200);
+        requiresUpdate |= tune != userConfig.voctTune;
+        userConfig.voctTune = tune;
+#ifndef USE_MCP4922
+        int8_t bias = constrain(userConfig.biasMode + (int)enc1, 0, 1);
+        requiresUpdate |= userConfig.biasMode != bias;
+        if (userConfig.biasMode != bias)
         {
-            int16_t tune = (pot0 / ((float)ADC_RESO / 400.0)) - (400 >> 1);
-            requiresUpdate |= tune != userConfig.voctTune;
-            userConfig.voctTune = tune;
+            digitalWrite(OUT_A_BIAS, bias ? LOW : HIGH);
+            digitalWrite(OUT_B_BIAS, bias ? LOW : HIGH);
         }
+        userConfig.biasMode = bias;
+#endif
     }
     break;
     }
