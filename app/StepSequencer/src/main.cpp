@@ -14,17 +14,30 @@
 #include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
+#include "StepSeqPlayControl.hpp"
 
-#define USE_MCP4922
+#define CPU_CLOCK 125000000.0
+// #define CPU_CLOCK 133000000.0 // 標準めいっぱい
+#define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
+
+#define INTR_PWM_RESO 1024
+#define PWM_RESO 4096 // 11bit
+#define DAC_MAX_MILLVOLT 5000 // mV
+#define ADC_RESO 4096
+#define VCO_MAX_COARSE_FREQ 330
+#define LFO_MAX_COARSE_FREQ 10
+
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
 MCP4922 MCP(&SPI1);
+// pwm_set_clkdivの演算で結果的に3
+// SPI処理が重めのため3
+#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 3)
+#else
+// pwm_set_clkdivの演算で結果的に1
+// #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
+#define SAMPLE_FREQ 16000
 #endif
-
-#include "StepSeqPlayControl.hpp"
-
-#define TIMER_INTR_TM 62 // us == 16kHz (1/(60sec/(250BPM*3840ticks))
-static repeating_timer timer;
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 static StepSeqPlayControl sspc(&u8g2);
@@ -32,6 +45,8 @@ static Button buttons[2];
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
 static int8_t menuIndex = 0;
+
+static uint interruptSliceNum;
 
 static const char *scale[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc"};
 
@@ -143,30 +158,53 @@ void dispOLED()
     u8g2.sendBuffer();
 }
 
+void interruptPWM()
+{
+    pwm_clear_irq(interruptSliceNum);
+    // gpio_put(GATE_A, HIGH);
+
+    sspc.updateProcedure();
+
+    // gpio_put(GATE_A, LOW);
+}
+
+// OUT_A/Bとは違うPWMチャンネルのPWM割り込みにすること
+void initPWMIntr(uint gpio)
+{
+    gpio_set_function(gpio, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(gpio);
+
+    interruptSliceNum = slice;
+    pwm_clear_irq(slice);
+    pwm_set_irq_enabled(slice, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, interruptPWM);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
+
+    // 割り込み頻度
+    pwm_set_wrap(slice, INTR_PWM_RESO - 1);
+    pwm_set_enabled(slice, true);
+    // clockdiv = 125MHz / (INTR_PWM_RESO * 欲しいfreq)
+    pwm_set_clkdiv(slice, CPU_CLOCK / (INTR_PWM_RESO * SAMPLE_FREQ));
+}
+
 void initPWM(uint gpio)
 {
     gpio_set_function(gpio, GPIO_FUNC_PWM);
-    uint potSlice = pwm_gpio_to_slice_num(gpio);
-    // 最速設定（可能な限り高い周波数にしてRCの値をあげることなく平滑な電圧を得たい）
-    // clockdiv = 125MHz / (PWM_RESO * 欲しいfreq)
-    // 欲しいfreq = 125MHz / (PWM_RESO * clockdiv)
-    pwm_set_clkdiv(potSlice, 1);
-    // pwm_set_clkdiv(potSlice, 125000000.0 / (PWM_RESO * 10000.0));
-    pwm_set_wrap(potSlice, PWM_RESO - 1);
-    pwm_set_enabled(potSlice, true);
-}
-
-bool intrTimer(struct repeating_timer *t)
-{
-    sspc.updateProcedure();
-    // static byte a = 0;
-    // a = (a + 1)&1;
-    // gpio_put(A2, a ? HIGH : LOW);
-    return true;
+    uint slice = pwm_gpio_to_slice_num(gpio);
+    pwm_set_wrap(slice, PWM_RESO - 1);
+    pwm_set_enabled(slice, true);
+    // 最速にして滑らかなPWMを得る
+    pwm_set_clkdiv(slice, 1);
 }
 
 void setup()
 {
+    // Serial.begin(9600);
+    // while (!Serial)
+    // {
+    // }
+    // delay(500);
+
     analogReadResolution(12);
 
     enc[0].init(ENC0A, ENC0B);
@@ -181,25 +219,19 @@ void setup()
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
-    MCP.setSPIspeed(20000000);
+    MCP.setSPIspeed(SPI_CLOCK);
     MCP.begin(PIN_SPI1_SS);
 #else
     initPWM(OUT_A);
     initPWM(OUT_B);
 #endif
 
-    Serial.begin(9600);
-    // while (!Serial)
-    // {
-    // }
-    delay(500);
-
     // sspc.generateTestToneSequence();
     sspc.requestResetAllSequence();
     sspc.setBPM(128, 48);
     sspc.start();
 
-    add_repeating_timer_us(-1 * TIMER_INTR_TM, intrTimer, NULL, &timer);
+    initPWMIntr(PWM_INTR_PIN);
 }
 
 void loop()
