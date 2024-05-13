@@ -8,7 +8,9 @@
 #pragma once
 #include <Arduino.h>
 
+// #define USE_MCP4922
 // #define rev100
+
 #ifdef rev100
 #define GATE_A A2 // gate
 #define GATE_B A3 // v/oct
@@ -21,7 +23,14 @@
 #define OUT_B D0 // ac out (rev1.0.0->out)
 #endif
 
-#define PWM_RESO 4096
+#define PWM_INTR_PIN D25 // D0/D1ピンとPWMチャンネルがかぶらないように
+
+// rev100改専用
+#ifndef USE_MCP4922
+#define OUT_A_BIAS D13
+#define OUT_B_BIAS D12 // SPIのピンを使用
+#endif
+#define EXTRA_GATE D9
 
 #define ENC0A D2
 #define ENC0B D3
