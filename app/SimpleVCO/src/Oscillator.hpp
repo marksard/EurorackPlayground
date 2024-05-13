@@ -169,7 +169,7 @@ public:
         return value;
     }
 
-    void setFrequency(uint16_t freqency)
+    void setFrequency(float freqency)
     {
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
         _tuningWordM = OSC_WAVE_BIT32 * ((float)freqency / _interruptClock);

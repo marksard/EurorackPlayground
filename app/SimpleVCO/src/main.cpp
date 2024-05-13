@@ -5,7 +5,6 @@
  * see https://opensource.org/licenses/MIT
  */
 
-// #define USE_MCP4922
 #include <Arduino.h>
 #include <hardware/pwm.h>
 #include <U8g2lib.h>
@@ -24,7 +23,8 @@
 #define PWM_RESO 2048 // 11bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
-#define MAX_COARSE_FREQ 550
+#define VCO_MAX_COARSE_FREQ 330
+#define LFO_MAX_COARSE_FREQ 10
 
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
@@ -34,7 +34,8 @@ MCP4922 MCP(&SPI1);
 #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 3)
 #else
 // pwm_set_clkdivの演算で結果的に1
-#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
+// #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
+#define SAMPLE_FREQ 120000
 #endif
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
@@ -44,7 +45,9 @@ static RotaryEncoder enc[2];
 static SmoothAnalogRead vOct;
 static SmoothAnalogRead gate;
 
-const static float rateRatio = (float)ADC_RESO / (float)MAX_COARSE_FREQ;
+static int8_t lfoMode = 0;
+static float rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+
 const static float foldRatio = (float)ADC_RESO / (float)100;
 const static float waveRatio = (float)ADC_RESO / (float)(Oscillator::Wave::MAX+1);
 static uint interruptSliceNum;
@@ -129,6 +132,13 @@ void dispOLED()
         u8g2.drawStr(0, 16, disp_buf);
         break;
     case 2:
+        u8g2.setFont(u8g2_font_VCR_OSD_tf);
+        sprintf(disp_buf, "LFO MODE");
+        u8g2.drawStr(0, 0, disp_buf);
+        sprintf(disp_buf, "%d", lfoMode);
+        u8g2.drawStr(0, 48, disp_buf);
+        break;
+    case 3:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
         sprintf(disp_buf, "V/OCT tune");
         u8g2.drawStr(0, 0, disp_buf);
@@ -225,6 +235,11 @@ void setup()
     MCP.setSPIspeed(SPI_CLOCK);
     MCP.begin(PIN_SPI1_SS);
 #else
+    pinMode(AC_BIAS, OUTPUT);
+    pinMode(DC_BIAS, OUTPUT);
+    digitalWrite(AC_BIAS, HIGH);
+    digitalWrite(DC_BIAS, HIGH);
+
     initPWM(OUT_A);
     initPWM(OUT_B);
 #endif
@@ -247,11 +262,11 @@ void loop()
     int8_t enc1 = enc[1].getDirection(true);
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
-    uint16_t pot0 = pot[0].analogRead(false);
-    uint16_t pot1 = pot[1].analogRead(false);
+    uint16_t pot0 = pot[0].analogRead(true);
+    uint16_t pot1 = pot[1].analogRead(true);
 
-    static uint16_t coarseA = (float)pot0 / rateRatio;
-    static uint16_t coarseB = (float)pot0 / rateRatio;
+    static float coarseA = (float)pot0 / rateRatio;
+    static float coarseB = (float)pot0 / rateRatio;
     static uint16_t lastPot0 = pot0;
     static uint8_t unlock = 0;
     static uint8_t lastMenuIndex = 0;
@@ -260,9 +275,9 @@ void loop()
     uint16_t externalIn = gate.analogRead(false);
     // 0to5VのV/OCTの想定でmap変換。RP2040では抵抗分圧で5V->3.3Vにしておく
     float powVOct = (float)pow(2, map(voct, 0, ADC_RESO - userConfig.voctTune, 0, DAC_MAX_MILLVOLT) * 0.001);
-    uint16_t freqencyA = coarseA * powVOct;
+    float freqencyA = max(coarseA * powVOct, 0.01);
     osc[0].setFrequency(freqencyA);
-    uint16_t freqencyB = coarseB * powVOct;
+    float freqencyB = max(coarseB * powVOct, 0.01);
     osc[1].setFrequency(freqencyB);
 
 
@@ -296,7 +311,7 @@ void loop()
         lastPot0 = pot0;
     }
 
-    menuIndex = map(pot1, 0, 4040, 0, 2);
+    menuIndex = map(pot1, 0, 4040, 0, 3);
     if (lastMenuIndex != menuIndex)
     {
         unlock = 0;
@@ -361,6 +376,22 @@ void loop()
     }
     break;
     case 2:
+    {
+        int8_t mode = constrainCyclic((int)lfoMode + (int)enc0, 0, 2);
+        requiresUpdate |= lfoMode != mode;
+        lfoMode = mode;
+        if (lfoMode)
+        {
+            rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+        }
+        else
+        {
+            rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+        }
+
+    }
+    break;
+    case 3:
     {
         if (unlock)
         {
