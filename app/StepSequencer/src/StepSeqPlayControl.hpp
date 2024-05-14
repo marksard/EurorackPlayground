@@ -16,6 +16,10 @@
 
 static float voltPerTone = 4095.0 / 12.0 / 5.0;
 
+#ifdef USE_MCP4922
+#include "MCP_DAC.h"
+extern MCP4922 MCP;
+#endif
 class StepSeqPlayControl
 {
 public:

@@ -25,7 +25,7 @@
 
 #define PWM_INTR_PIN D25 // D0/D1ピンとPWMチャンネルがかぶらないように
 
-// rev100改専用
+// rev110改専用
 #ifndef USE_MCP4922
 #define OUT_A_BIAS D13
 #define OUT_B_BIAS D12 // SPIのピンを使用
