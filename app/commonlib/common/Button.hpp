@@ -13,14 +13,14 @@ class Button
 {
 public:
     Button() {}
-    Button(byte pin)
+    Button(uint8_t pin)
     {
         init(pin);
     }
     
     /// @brief ピン設定
     /// @param pin
-    void init(byte pin)
+    void init(uint8_t pin)
     {
         _pin = pin;
         _pinState = 0;
@@ -38,10 +38,10 @@ public:
 
     /// @brief ボタン状態を取得
     /// @return 0:None 1:Button down 2:Button up 3:Holding 4:Holded
-    inline byte getState()
+    inline uint8_t getState()
     {
-        byte result = 0;
-        byte value = readPin();
+        uint8_t result = 0;
+        uint8_t value = readPin();
         // 簡単チャタ取り
         _pinState = (_pinState << 1) | value;
 
@@ -83,7 +83,7 @@ public:
                 _holdStage = 1;
                 _lastMillis = millis();
             }
-            // Hold confirm (1sec)
+            // Hold confirm
             else if (millis() >= _lastMillis + _holdTime)
             {
                 _holdStage = 2;
@@ -99,15 +99,15 @@ public:
     }
 
 protected:
-    byte _pin;
-    byte _pinState;
-    byte _holdStage;
+    uint8_t _pin;
+    uint8_t _pinState;
+    uint8_t _holdStage;
     unsigned long _lastMillis;
     int16_t _holdTime;
 
     /// @brief ピン値読込
     /// @return
-    virtual byte readPin()
+    virtual uint8_t readPin()
     {
         return digitalRead(_pin);
     }
