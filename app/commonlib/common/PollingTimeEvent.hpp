@@ -59,8 +59,10 @@ public:
 
     void setMills(int millSec) override
     {
-        triggerTime = millSec;
+        triggerTime = millSec * 1000;
     }
+
+    int getMills() override { return triggerTime / 1000; }
 
     bool setBPM(byte bpm, byte bpmReso) override
     {

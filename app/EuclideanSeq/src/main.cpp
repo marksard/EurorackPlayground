@@ -13,21 +13,23 @@
 #include "../../commonlib/common/RotaryEncoder.hpp"
 #include "../../commonlib/common/EdgeChecker.hpp"
 #include "../../commonlib/common/TriggerOut.hpp"
+#include "../../commonlib/common/PollingTimeEvent.hpp"
 #include "Euclidean.hpp"
 #include "EuclideanDisp.hpp"
 #include "EzOscilloscope.hpp"
+#include "Oscillator.hpp"
 #include "gpio.h"
 
-#define CPU_CLOCK 125000000.0
-// #define CPU_CLOCK 133000000.0 // 標準めいっぱい
+// #define CPU_CLOCK 125000000.0
+#define CPU_CLOCK 133000000.0 // 標準めいっぱい
 #define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
 
 #define INTR_PWM_RESO 1024
-#define PWM_RESO 4096         // 11bit
+#define PWM_RESO 4096         // 12bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
-#define VCO_MAX_COARSE_FREQ 330
 #define LFO_MAX_COARSE_FREQ 10
+static float rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
 
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
@@ -38,7 +40,7 @@ MCP4922 MCP(&SPI1);
 #else
 // pwm_set_clkdivの演算で結果的に1
 // #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
-#define SAMPLE_FREQ 8000
+#define SAMPLE_FREQ 4000
 #endif
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
@@ -52,12 +54,17 @@ static Euclidean euclid[2];
 static EuclideanDisp euclidDisp[2];
 static SmoothAnalogRead cv;
 static EzOscilloscope oscillo;
-static int8_t shSource = 1;
-static int8_t cvInput = 0;
-static int8_t shTiming = 0;
-static int8_t octMax = 1;
-static int8_t scaleIndex = 0;
+static PollingTimeEvent intClock;
+static Oscillator intLFO;
+static int8_t holdSrc = 0;
+static int8_t clockSrc = 0;
+static int16_t cvInput = 0;
+static int8_t holdTrigger = 0;
+static int8_t intOctMax = 1;
+static int8_t scaleIndex = 2;
 static int8_t requestSeqReset = 0;
+static int8_t duration = 20;
+static int8_t intPoler = 0;
 static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc"};
 
 static uint interruptSliceNum;
@@ -105,41 +112,34 @@ void dispOLED()
         euclidDisp[1].drawCircle(&u8g2, euclid[1].getStepSize(), euclid[1].getCurrent(), euclid[1].getSteps());
         u8g2.sendBuffer();
     }
-    else if (menuIndex >= 2 && menuIndex < 4)
+    else if (menuIndex >= 2 && menuIndex < 7)
     {
-        sprintf(disp_buf[0], "%cA:%02d %c t:%02d s:%02d",
-                menuIndex == 0 ? '*' : ' ',
-                euclid[0].getCurrent(),
-                euclid[0].getCurrentTrigger() ? '#' : '-',
-                euclid[0].getOnsets(), euclid[0].getStepSize());
-        sprintf(disp_buf[1], "%cB:%02d %c t:%02d s:%02d",
-                menuIndex == 1 ? '*' : ' ',
-                euclid[1].getCurrent(),
-                euclid[1].getCurrentTrigger() ? '#' : '-',
-                euclid[1].getOnsets(), euclid[1].getStepSize());
-        sprintf(disp_buf[2], "%cRANGE:%d SCALE:%s",
-                menuIndex == 2 ? '*' : ' ',
-                octMax + 1,
+        sprintf(disp_buf[0], "%cCLK:%s S&H:%s",
+                    menuIndex == 2 ? '*' : ' ',
+                    clockSrc == 0 ? "Int" : "Ext",
+                    holdSrc == 0 ? "Int" : "Ext");
+        sprintf(disp_buf[1], "%ciBPM:%03d iRNG:%d",
+                    menuIndex == 3 ? '*' : ' ',
+                    intClock.getBPM(),
+                    intOctMax);
+        sprintf(disp_buf[2], "%cTRIG:%s SCAL:%s",
+                menuIndex == 4 ? '*' : ' ',
+                holdTrigger == 0 ? "CLK" : holdTrigger == 1 ? " A " : " B ",
                 scaleNames[scaleIndex]);
-        sprintf(disp_buf[3], "%cS&H:%s TM:%s",
-                menuIndex == 3 ? '*' : ' ',
-                shSource == 0 ? "Int" : "Ext",
-                shTiming == 0 ? "CLK" : shTiming == 1 ? "A"
-                                                      : "B");
+        sprintf(disp_buf[3], "%cTRIG LEN:%03d",
+                menuIndex == 5 ? '*' : ' ',
+                duration);
+        sprintf(disp_buf[4], "%ciWAV:%s iPOL:%s",
+                menuIndex == 6 ? '*' : ' ',
+                intLFO.getWaveName(),
+                intPoler ? "BI " : "UNI");
 
         static uint8_t menuSlider = 0;
-        if (menuIndex == 2)
-        {
-            menuSlider = 0;
-        }
-        else if (menuIndex == 3)
-        {
-            menuSlider = 1;
-        }
+        menuSlider = map(menuIndex, 0, 8, 0, 3);
 
         u8g2.clearBuffer();
         u8g2.setFont(u8g2_font_7x14B_tf);
-        u8g2.drawStr(0, 2, "Euclid/S&H Quantiz");
+        u8g2.drawStr(0, 2, "Euclid/S&H/Quantiz");
         u8g2.drawStr(0, 16, disp_buf[menuSlider]);
         u8g2.drawStr(0, 32, disp_buf[menuSlider + 1]);
         u8g2.drawStr(0, 48, disp_buf[menuSlider + 2]);
@@ -154,9 +154,14 @@ void dispOLED()
 void interruptPWM()
 {
     pwm_clear_irq(interruptSliceNum);
+    // gpio_put(GATE_A, HIGH);
 
-    // gpio_put(EXTRA_GATE, HIGH);
-    byte trig = clockEdge.isEdgeHigh();
+    byte trig = 0;
+    if (clockSrc == 0)
+        trig = intClock.ready();
+    else
+        trig = clockEdge.isEdgeHigh();
+
     if (trig)
     {
         int8_t trigA = euclid[0].getNext();
@@ -164,24 +169,11 @@ void interruptPWM()
         triggerOut[0].update(trigA ? HIGH : LOW);
         triggerOut[1].update(trigB ? HIGH : LOW);
 
-        if ((shTiming == 0 && trig) ||
-            (shTiming == 1 && trigA) ||
-            (shTiming == 2 && trigB))
+        if ((holdTrigger == 0 && trig) ||
+            (holdTrigger == 1 && trigA) ||
+            (holdTrigger == 2 && trigB))
         {
-            int16_t voct = 0;
-            if (shSource == 0)
-            {
-                uint8_t oct = random(octMax);
-                uint8_t semi = scales[scaleIndex][random(MAX_SCALE_KEY)];
-                voct = ((oct * 12) + semi) * voltPerTone;
-            }
-            else
-            {
-                uint8_t oct = cvInput / 7;
-                uint8_t semi = scales[scaleIndex][cvInput % 7];
-                voct = ((oct * 12) + semi) * voltPerTone;
-            }
-            pwm_set_gpio_level(OUT_A, voct);
+            pwm_set_gpio_level(OUT_A, cvInput);
         }
     }
     else
@@ -195,7 +187,9 @@ void interruptPWM()
             requestSeqReset = 0;
         }
     }
-    // gpio_put(EXTRA_GATE, LOW);
+
+    // pwm_set_gpio_level(OUT_B, intLFO.getWaveValue());
+    // gpio_put(GATE_A, LOW);
 }
 
 // OUT_A/Bとは違うPWMチャンネルのPWM割り込みにすること
@@ -227,6 +221,19 @@ void initPWM(uint gpio)
     pwm_set_clkdiv(slice, 1);
 }
 
+
+void setDuration(int8_t duration)
+{
+    int length = 0;
+    if (clockSrc == 0)
+        length = intClock.getMills();
+    else
+        length = clockEdge.getDurationMills();
+    length = map(duration, 0, 100, 0, length);
+    triggerOut[0].setDuration(length);
+    triggerOut[1].setDuration(length);
+}
+
 void setup()
 {
     // Serial.begin(9600);
@@ -245,12 +252,21 @@ void setup()
     buttons[0].init(SW0);
     buttons[1].init(SW1);
     clockEdge.init(GATE_A);
-    triggerOut[0].init(OUT_B, 10);
-    triggerOut[1].init(EXTRA_GATE, 10);
+    triggerOut[0].init(OUT_B);
+    // triggerOut[0].init(GATE_A, duration);
+    triggerOut[1].init(EXTRA_GATE);
     cv.init(GATE_B); // voct in
     euclidDisp[0].init(32, 40, 21);
     euclidDisp[1].init(32 + 64, 40, 21);
     oscillo.init(&u8g2, &cv, 16);
+    intClock.setBPM(133,4);
+    intClock.start();
+    intLFO.init(SAMPLE_FREQ);
+    intLFO.setWave(Oscillator::Wave::TRI);
+    intLFO.setFrequency(1.0);
+    // pinMode(OUT_B_BIAS, OUTPUT);
+    // digitalWrite(OUT_B_BIAS, intPoler);
+    setDuration(duration);
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
@@ -265,11 +281,6 @@ void setup()
     euclid[1].generate(4, 16);
     euclidDisp[0].generateCircle(5);
     euclidDisp[1].generateCircle(16);
-
-    // for (int i = 0; i < 32; i++) {
-    //     Serial.print(euclid[0].getNext());
-    // }
-    // Serial.println();
 
     initPWMIntr(PWM_INTR_PIN);
 }
@@ -293,12 +304,23 @@ void loop()
     uint16_t pot0 = pot[0].analogRead(false);
     uint16_t pot1 = pot[1].analogRead(false);
 
-    uint8_t duration = map(pot1, 0, 4096, 0, 100);
-    triggerOut[0].setDuration(duration);
-    triggerOut[1].setDuration(duration);
 
-    menuIndex = map(pot0, 0, 4096, 0, 5);
-    cvInput = map(cv.analogRead(false), 0, 4096, 0, 36);
+    float coarseA = (float)pot1 / rateRatio;
+    float lfoFreq = max(coarseA, 0.01);
+    intLFO.setFrequency(lfoFreq);
+
+    menuIndex = map(pot0, 0, 4096, 0, 8);
+    int16_t cvIn = 0;
+    if (holdSrc)
+    {
+        cvIn = map(cv.analogRead(false), 0, 4096, 0, 36);
+    }
+    else {
+        cvIn = map(intLFO.getWaveValue(), 0, 4096, 0, (7 * intOctMax) + 1);
+    }
+    uint8_t oct = cvIn / 7;
+    uint8_t semi = scales[scaleIndex][cvIn % 7];
+    cvInput = ((oct * 12) + semi) * voltPerTone;
 
     if (btn1 == 2)
     {
@@ -321,15 +343,32 @@ void loop()
     }
     else if (menuIndex == 2)
     {
-        octMax = constrain(octMax + enc0, 0, 4);
-        scaleIndex = constrain(scaleIndex + enc1, 0, MAX_SCALES_M1);
+        clockSrc = constrain(clockSrc + enc0, 0, 1);
+        holdSrc = constrain(holdSrc + enc1, 0, 1);
     }
     else if (menuIndex == 3)
     {
-        shSource = constrain(shSource + enc0, 0, 1);
-        shTiming = constrain(shTiming + enc1, 0, 2);
+        uint8_t bpm = constrain(intClock.getBPM() + enc0, 0, 255);
+        intClock.setBPM(bpm);
+        intOctMax = constrain(intOctMax + enc1, 1, 5);
     }
     else if (menuIndex == 4)
+    {
+        holdTrigger = constrain(holdTrigger + enc0, 0, 2);
+        scaleIndex = constrain(scaleIndex + enc1, 0, MAX_SCALES_M1);
+    }
+    else if (menuIndex == 5)
+    {
+        duration = constrain(duration + (enc0 * 5), 5, 100);
+        setDuration(duration);
+    }
+    else if (menuIndex == 6)
+    {
+        intLFO.setWave((Oscillator::Wave)constrain((int)intLFO.getWave() + (int)enc0, 0, (int)Oscillator::Wave::MAX));
+        // intPoler = constrain(intPoler + enc1, 0, 1);
+        // digitalWrite(OUT_B_BIAS, intPoler);
+    }
+    else if (menuIndex == 7)
     {
         if (enc0 == 1)oscillo.incDelay();
         else if (enc0 == -1)oscillo.decDelay();

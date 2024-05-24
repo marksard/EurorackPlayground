@@ -19,6 +19,7 @@ public:
     virtual bool ready() = 0;
     virtual bool isStart() = 0;
     virtual void setMills(int millSec) = 0;
+    virtual int getMills() = 0;
     virtual bool setBPM(byte bpm, byte bpmReso) = 0;
     virtual bool setBPM(byte bpm) = 0;
     virtual byte getBPM() = 0;

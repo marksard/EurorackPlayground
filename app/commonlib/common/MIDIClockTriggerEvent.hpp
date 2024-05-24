@@ -63,6 +63,8 @@ public:
     }
 
     void setMills(int millSec) override {}
+    int getMills() override { return 0; }
+
     bool setBPM(byte bpm, byte bpmReso) override
     {
         if (_bpm == bpm && _bpmReso == bpmReso)

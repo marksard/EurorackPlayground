@@ -38,7 +38,13 @@ public:
     inline bool isEdgeHigh()
     {
         uint8_t value = readPin();
-        uint8_t edge = value == 1 && _lastValue == 0 ? 1 : 0;
+        uint8_t edge = 0;
+        if (value == 1 && _lastValue == 0)
+        {
+            edge = 1;
+            _duration = micros() - _lastMicros;
+            _lastMicros = micros();
+        }
         _lastValue = value;
         return edge;
     }
@@ -53,9 +59,21 @@ public:
         return edge;
     }
 
+    inline uint8_t getBPM(byte bpmReso = 4)
+    {
+        return (60.0 * 1000000.0) / (_duration * bpmReso);
+    }
+
+    inline int getDurationMills()
+    {
+        return _duration / 1000;
+    }
+
 protected:
     uint8_t _pin;
     uint8_t _lastValue;
+    long _lastMicros;
+    int _duration;
 
     /// @brief ピン値読込
     /// @return

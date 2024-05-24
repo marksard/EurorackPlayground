@@ -15,16 +15,15 @@ public:
     TriggerOut() {}
     TriggerOut(uint8_t pin)
     {
-        init(pin, 5);
+        init(pin);
     }
     
     /// @brief ピン設定
     /// @param pin
-    /// @param duration mills
-    void init(uint8_t pin, uint8_t duration)
+    void init(uint8_t pin)
     {
         _pin = pin;
-        _duration = duration;
+        _duration = 10;
 
         pinMode(pin, OUTPUT);
     }
