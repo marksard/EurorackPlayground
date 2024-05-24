@@ -140,10 +140,11 @@ void dispOLED()
         u8g2.drawStr(0, 2, "PPQ");
         u8g2.setFont(u8g2_font_5x8_tf);
         u8g2.drawStr(52, 0, "PPQ   ");
-        u8g2.drawStr(52, 8, "------");
+        u8g2.drawStr(52, 8, "CLOCK ");
         sprintf(disp_buf, "-->%03d", sspc.getPPQ());
         u8g2.drawStr(92, 0, disp_buf);
-        u8g2.drawStr(92, 8, "P2>---");
+        sprintf(disp_buf, "-->%s", sspc.getClockMode() == StepSeqPlayControl::CLOCK::INT ? "INT" : "EXT");
+        u8g2.drawStr(92, 8, disp_buf);
         break;
     default:
         // u8g2.setFont(u8g2_font_5x8_tf);
@@ -215,7 +216,7 @@ void setup()
     buttons[1].init(SW1);
 
     pinMode(GATE_A, OUTPUT);
-    pinMode(GATE_B, OUTPUT);
+    // pinMode(GATE_B, OUTPUT);
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
@@ -227,6 +228,7 @@ void setup()
 #endif
 
     // sspc.generateTestToneSequence();
+    sspc.setClockMode(StepSeqPlayControl::CLOCK::INT);
     sspc.requestResetAllSequence();
     sspc.setBPM(128, 48);
     sspc.start();
@@ -335,6 +337,7 @@ void loop()
         break;
     case 8:
         sspc.addPPQ(enc0);
+        // sspc.setClockMode((StepSeqPlayControl::CLOCK)constrain(sspc.getClockMode() + enc1, 0, 1));
         break;
     default:
         break;

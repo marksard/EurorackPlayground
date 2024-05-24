@@ -10,6 +10,7 @@
 #include <U8g2lib.h>
 #include "../../commonlib/common/TriggerInterface.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
+#include "../../commonlib/common/SyncInTrigger.hpp"
 #include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
@@ -23,12 +24,20 @@ extern MCP4922 MCP;
 class StepSeqPlayControl
 {
 public:
+    enum CLOCK
+    {
+        INT = 0,
+        EXT,
+        IGNORE,
+    };
+
+public:
     StepSeqPlayControl(U8G2 *pU8g2)
         : _ssm(), _ssv(pU8g2, 0, 16)
         , _settingPos(DEF_MAX_STEP_M1, 0, DEF_MAX_STEP_M1)
     {
-        _pTrigger = &_polling;
-
+        _pTrigger = NULL;
+        _clock = CLOCK::IGNORE;
         _seqReadyCount = 0;
         _seqReadyCountMax = 0;
         _syncCount = 0;
@@ -38,6 +47,8 @@ public:
         _requestResetAllSequence = false;
         _requestResetGate = false;
         _auto_generative = false;
+
+        // setClockMode(CLOCK::INT);
     }
 
     void start()
@@ -70,13 +81,41 @@ public:
         _ssm.gateStep.setMode(Step::Mode::Forward);
     }
 
-    void setSyncMode()
+    void setClockMode(CLOCK clock)
     {
-        bool result = _pTrigger->ready();
-        if (result)
+        if (_clock == clock) return;
+
+        _clock = clock;
+        if (clock == CLOCK::INT)
         {
+            pinMode(GATE_B, OUTPUT);
+            if (_pTrigger != NULL)
+            {
+                _seqReadyCountMax = 48 / 4;
+                _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
+                if (_pTrigger->isStart())
+                {
+                    _polling.start();
+                }
+            }
+            _pTrigger = &_polling;
         }
+        // else {
+        //     _syncIn.setPin(GATE_B);
+        //     if (_pTrigger != NULL)
+        //     {
+        //         _seqReadyCountMax = 4 / 4;
+        //         _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
+        //         if (_pTrigger->isStart())
+        //         {
+        //             _syncIn.start();
+        //         }
+        //     }
+        //     _pTrigger = &_syncIn;
+        // }
     }
+
+    CLOCK getClockMode() { return _clock; }
 
     void addBPM(int8_t value)
     {
@@ -208,6 +247,33 @@ public:
         return _auto_generative ? 1 : 0;
     }
 
+    void setSyncOut(int8_t value)
+    {
+        if (_clock == CLOCK::INT)
+        {
+            gpio_put(GATE_B, value);
+        }
+    }
+
+    void setAcc(int8_t value)
+    {
+        uint16_t out = value ? 4095 : 0;
+#ifdef USE_MCP4922
+            MCP.fastWriteB(value);
+#else
+            pwm_set_gpio_level(OUT_B, value);
+#endif
+    }
+
+    void setVOct(uint16_t value)
+    {
+#ifdef USE_MCP4922
+            MCP.fastWriteA(value);
+#else
+            pwm_set_gpio_level(OUT_A, voct);
+#endif
+    }
+
     void updateProcedure()
     {
         if (!_pTrigger->ready())
@@ -223,40 +289,28 @@ public:
         }
         else if (_seqReadyCount > _seqGateOffStep * 3)
         {
-            gpio_put(GATE_B, LOW);
+            setSyncOut(LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 3 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::L)
         {
             gpio_put(GATE_A, LOW);
-            gpio_put(GATE_B, LOW);
-#ifdef USE_MCP4922
-            MCP.fastWriteB(0);
-#else
-            pwm_set_gpio_level(OUT_B, 0);
-#endif
+            setSyncOut(LOW);
+            setAcc(LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 2 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::H)
         {
             gpio_put(GATE_A, LOW);
-            gpio_put(GATE_B, LOW);
-#ifdef USE_MCP4922
-            MCP.fastWriteB(0);
-#else
-            pwm_set_gpio_level(OUT_B, 0);
-#endif
+            setSyncOut(LOW);
+            setAcc(LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::S)
         {
             gpio_put(GATE_A, LOW);
-            gpio_put(GATE_B, LOW);
-#ifdef USE_MCP4922
-            MCP.fastWriteB(0);
-#else
-            pwm_set_gpio_level(OUT_B, 0);
-#endif
+            setSyncOut(LOW);
+            setAcc(LOW);
         }
 
         if (_seqReadyCount == 0)
@@ -286,36 +340,22 @@ public:
             }
 
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
-#ifdef USE_MCP4922
-            MCP.fastWriteA(voct);
-            // MCP.fastWriteB(voct);
-#else
-            pwm_set_gpio_level(OUT_A, voct);
-            // pwm_set_gpio_level(OUT_B, voct);
-#endif
+            setVOct(voct);
             uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
             gpio_put(GATE_A, gate);
             _syncCount--;
             if (_syncCount < 0)
             {
-                gpio_put(GATE_B, HIGH);
+                setSyncOut(HIGH);
                 _syncCount = 4 - _ppq;
             }
 
             if (_ssm.getPlayAcc())
             {
-#ifdef USE_MCP4922
-            MCP.fastWriteB(65535);
-#else
-            pwm_set_gpio_level(OUT_B, 65535);
-#endif
+                setAcc(HIGH);
             }
             else {
-#ifdef USE_MCP4922
-            MCP.fastWriteB(0);
-#else
-            pwm_set_gpio_level(OUT_B, 0);
-#endif
+                setAcc(LOW);
             }
         }
         _seqReadyCount++;
@@ -401,6 +441,8 @@ private:
     U8G2 *_pU8g2;
     TriggerInterface *_pTrigger;
     PollingTimeEvent _polling;
+    SyncInTrigger _syncIn;
+    CLOCK _clock;
 
     uint8_t _seqReadyCount;
     uint8_t _seqReadyCountMax;
