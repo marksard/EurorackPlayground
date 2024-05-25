@@ -30,6 +30,7 @@
 #define ADC_RESO 4096
 #define LFO_MAX_COARSE_FREQ 10
 static float rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+#define EXP_CURVE(value, ratio) (exp((value * (ratio / (ADC_RESO-1)))) - 1) / (exp(ratio) - 1)
 
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
@@ -129,10 +130,14 @@ void dispOLED()
         sprintf(disp_buf[3], "%cTRIG LEN:%03d",
                 menuIndex == 5 ? '*' : ' ',
                 duration);
-        sprintf(disp_buf[4], "%ciWAV:%s iPOL:%s",
+        // sprintf(disp_buf[4], "%ciWAV:%s iPOL:%s",
+        //         menuIndex == 6 ? '*' : ' ',
+        //         intLFO.getWaveName(),
+        //         intPoler ? "BI " : "UNI");
+        sprintf(disp_buf[4], "%ciWAV:%s FRQ:%4.2f",
                 menuIndex == 6 ? '*' : ' ',
                 intLFO.getWaveName(),
-                intPoler ? "BI " : "UNI");
+                intLFO.getFrequency());
 
         static uint8_t menuSlider = 0;
         menuSlider = map(menuIndex, 0, 8, 0, 3);
@@ -305,7 +310,8 @@ void loop()
     uint16_t pot1 = pot[1].analogRead(false);
 
 
-    float coarseA = (float)pot1 / rateRatio;
+    // float coarseA = (float)pot1 / rateRatio;
+    float coarseA = EXP_CURVE((float)pot1, 3.0) * LFO_MAX_COARSE_FREQ;
     float lfoFreq = max(coarseA, 0.01);
     intLFO.setFrequency(lfoFreq);
 

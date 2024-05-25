@@ -95,6 +95,7 @@ public:
 
     void init(float clock)
     {
+        _frequency = 0.0;
         _phaseAccum = 0;
         _tuningWordM = 0;
         _wave = Wave::SQU;
@@ -144,6 +145,7 @@ public:
 
     void setFrequency(float frequency)
     {
+        _frequency = frequency;
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
         _tuningWordM = OSC_WAVE_BIT32 * ((float)frequency / _interruptClock);
     }
@@ -157,8 +159,10 @@ public:
 
     Wave getWave() { return _wave; }
     const char *getWaveName() { return waveName[_wave]; }
+    float getFrequency() { return _frequency; }
 
 private:
+    float _frequency;
     uint32_t _phaseAccum;
     uint32_t _tuningWordM;
     Wave _wave;
