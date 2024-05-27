@@ -16,7 +16,7 @@
 #include "../../commonlib/common/PollingTimeEvent.hpp"
 #include "Euclidean.hpp"
 #include "EuclideanDisp.hpp"
-#include "EzOscilloscope.hpp"
+#include "OscilloscopeLite.hpp"
 #include "Oscillator.hpp"
 #include "gpio.h"
 
@@ -41,7 +41,7 @@ MCP4922 MCP(&SPI1);
 #else
 // pwm_set_clkdivの演算で結果的に1
 // #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
-#define SAMPLE_FREQ 4000
+#define SAMPLE_FREQ 10000
 #endif
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
@@ -54,7 +54,7 @@ static TriggerOut triggerOut[2];
 static Euclidean euclid[2];
 static EuclideanDisp euclidDisp[2];
 static SmoothAnalogRead cv;
-static EzOscilloscope oscillo;
+static OscilloscopeLite oscillo(SAMPLE_FREQ);
 static PollingTimeEvent intClock;
 static Oscillator intLFO;
 static int8_t holdSrc = 0;
@@ -134,7 +134,7 @@ void dispOLED()
         //         menuIndex == 6 ? '*' : ' ',
         //         intLFO.getWaveName(),
         //         intPoler ? "BI " : "UNI");
-        sprintf(disp_buf[4], "%ciWAV:%s FRQ:%4.2f",
+        sprintf(disp_buf[4], "%ciWAV:%s FRQ:%3.1f",
                 menuIndex == 6 ? '*' : ' ',
                 intLFO.getWaveName(),
                 intLFO.getFrequency());
@@ -150,9 +150,29 @@ void dispOLED()
         u8g2.drawStr(0, 48, disp_buf[menuSlider + 2]);
         u8g2.sendBuffer();
     }
-    else
+    else if (menuIndex == 7)
     {
-        oscillo.play();
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_7x14B_tf);
+        u8g2.drawStr(0, 2, "INT LFO MON");
+        oscillo.draw();
+        u8g2.sendBuffer();
+    }
+    else if (menuIndex == 8)
+    {
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_7x14B_tf);
+        u8g2.drawStr(0, 2, "S&H MON");
+        oscillo.draw();
+        u8g2.sendBuffer();
+    }
+    else if (menuIndex == 9)
+    {
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_7x14B_tf);
+        u8g2.drawStr(0, 2, "EXT CV MON");
+        oscillo.draw();
+        u8g2.sendBuffer();
     }
 }
 
@@ -161,6 +181,7 @@ void interruptPWM()
     pwm_clear_irq(interruptSliceNum);
     // gpio_put(GATE_A, HIGH);
 
+    static uint16_t lastCvInput = 0;
     byte trig = 0;
     if (clockSrc == 0)
         trig = intClock.ready();
@@ -179,6 +200,7 @@ void interruptPWM()
             (holdTrigger == 2 && trigB))
         {
             pwm_set_gpio_level(OUT_A, cvInput);
+            lastCvInput = cvInput;
         }
     }
     else
@@ -191,6 +213,19 @@ void interruptPWM()
             euclid[1].resetCurrent();
             requestSeqReset = 0;
         }
+    }
+
+    if (menuIndex == 7)
+    {
+        oscillo.write(intLFO.getValue());
+    }
+    else if (menuIndex == 8)
+    {
+        oscillo.write(lastCvInput);
+    }
+    else if (menuIndex == 9)
+    {
+        oscillo.write(cv.getValue());
     }
 
     // pwm_set_gpio_level(OUT_B, intLFO.getWaveValue());
@@ -263,7 +298,7 @@ void setup()
     cv.init(GATE_B); // voct in
     euclidDisp[0].init(32, 40, 21);
     euclidDisp[1].init(32 + 64, 40, 21);
-    oscillo.init(&u8g2, &cv, 16);
+    oscillo.init(&u8g2, 16);
     intClock.setBPM(133,4);
     intClock.start();
     intLFO.init(SAMPLE_FREQ);
@@ -306,23 +341,24 @@ void loop()
     int8_t enc1 = enc[1].getDirection(true);
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
-    uint16_t pot0 = pot[0].analogRead(false);
-    uint16_t pot1 = pot[1].analogRead(false);
-
+    uint16_t pot0 = pot[0].analogReadDropLow4bit();
+    uint16_t pot1 = pot[1].analogReadDropLow4bit();
 
     // float coarseA = (float)pot1 / rateRatio;
     float coarseA = EXP_CURVE((float)pot1, 3.0) * LFO_MAX_COARSE_FREQ;
     float lfoFreq = max(coarseA, 0.01);
     intLFO.setFrequency(lfoFreq);
+    uint16_t extCV = cv.analogReadDropLow4bit();
+    uint16_t intCV = intLFO.getWaveValue();
 
-    menuIndex = map(pot0, 0, 4096, 0, 8);
+    menuIndex = map(pot0, 0, 4096, 0, 10);
     int16_t cvIn = 0;
     if (holdSrc)
     {
-        cvIn = map(cv.analogRead(false), 0, 4096, 0, 36);
+        cvIn = map(extCV, 0, 4096, 0, 36);
     }
     else {
-        cvIn = map(intLFO.getWaveValue(), 0, 4096, 0, (7 * intOctMax) + 1);
+        cvIn = map(intCV, 0, 4096, 0, (7 * intOctMax) + 1);
     }
     uint8_t oct = cvIn / 7;
     uint8_t semi = scales[scaleIndex][cvIn % 7];
@@ -374,13 +410,16 @@ void loop()
         // intPoler = constrain(intPoler + enc1, 0, 1);
         // digitalWrite(OUT_B_BIAS, intPoler);
     }
-    else if (menuIndex == 7)
+    else if (menuIndex >= 7 && menuIndex <= 10)
     {
-        if (enc0 == 1)oscillo.incDelay();
-        else if (enc0 == -1)oscillo.decDelay();
+        oscillo.addHorizontalScale(enc0 * -1);
+        if (enc1 == 1)
+            oscillo.setTrigger(true);
+        if (enc1 == -1)
+            oscillo.setTrigger(false);
     }
 
-    sleep_us(250);
+    sleep_us(100);
 }
 
 void setup1()

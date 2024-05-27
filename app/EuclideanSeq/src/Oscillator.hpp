@@ -105,7 +105,7 @@ public:
         _heightHalf = WAVE_HEIGHT >> 1;
         _heightM1 = WAVE_HEIGHT -1;
         _interruptClock = clock;
-        // _halfReso = _reso >> 1;
+        _value = 0;
     }
 
     // value範囲＝DAC、PWM出力範囲：0-4095(12bit)
@@ -116,7 +116,6 @@ public:
         _phaseAccum = _phaseAccum + _tuningWordM;
         uint32_t index = _phaseAccum >> indexBit;
         uint32_t indexHeight = (index >> WAVE_INDEX_DIV_BIT);
-        uint16_t indexOffset = (index + 3030) % WAVE_LENGTH;
         uint16_t value = 0;
         switch (_wave)
         {
@@ -140,6 +139,7 @@ public:
             break;
         }
 
+        _value = value;
         return value;
     }
 
@@ -160,6 +160,7 @@ public:
     Wave getWave() { return _wave; }
     const char *getWaveName() { return waveName[_wave]; }
     float getFrequency() { return _frequency; }
+    uint16_t getValue() { return _value; }
 
 private:
     float _frequency;
@@ -172,5 +173,5 @@ private:
     uint32_t _heightM1;
     uint8_t _noteNameIndex;
     float _interruptClock;
-    uint16_t _halfReso;
+    uint16_t _value;
 };
