@@ -11,7 +11,7 @@
 #define DEF_MAX_STEP 16
 #define DEF_MAX_STEP_M1 (DEF_MAX_STEP - 1)
 #define MAX_SCALE_KEY 7
-#define MAX_SCALES 7
+#define MAX_SCALES 10
 #define MAX_SCALES_M1 (MAX_SCALES - 1)
 
 // スケール
@@ -24,6 +24,9 @@ static const uint8_t scales[MAX_SCALES][MAX_SCALE_KEY] =
         {0, 2, 4, 5, 7, 9, 10}, // mixolydian
         {0, 2, 3, 5, 7, 8, 10}, // aeolian / natural minor
         {0, 1, 3, 5, 6, 8, 10}, // locrian
+        {0, 2, 3, 4, 7, 9,  0}, // m.blues
+        {0, 1, 4, 5, 7, 8, 10}, // spanish
+        {0, 2, 4, 7, 9, 0,  2}, // luoyin
 };
 
 #define MAX_GATE_TIMINGS 4
@@ -244,6 +247,7 @@ public:
     StepSeqModel()
     : _scaleIndex(MAX_SCALES_M1, 0, MAX_SCALES_M1)
     , gateLenAdder((int8_t)Gate::G * -1, (int8_t)Gate::G, (int8_t)Gate::G * -1, (int8_t)Gate::G)
+    , octaveAdder(-1, 2, -1, 2)
     {
         initArray(_keys, MAX_STEP);
         initArray(_octaves, MAX_STEP);
@@ -266,7 +270,7 @@ public:
     uint8_t getPlayAcc() { return _accs[gateStep.pos.get()]; }
     uint8_t getPlayGate() { return constrain(_gates[gateStep.pos.get()] + gateLenAdder.get(), 0, (uint8_t)Gate::G); }
 
-    uint8_t getPlayNote() { return (getPlayOctave() * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
+    uint8_t getPlayNote() { return (constrain(getPlayOctave() + octaveAdder.get(), 0, 5) * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
 
 
     void moveSeq(SeqMove move)
@@ -353,6 +357,7 @@ public:
     Step keyStep;
     Step gateStep;
     LimitValue<int8_t> gateLenAdder;
+    LimitValue<int8_t> octaveAdder;
 
 public:
     uint8_t _keys[MAX_STEP];
@@ -372,7 +377,7 @@ void generateSequence(StepSeqModel *pssm)
     {
         // タイミングマップにランダムでタイミングをorして足す
         StepSeqModel::Gate gate = gateMap[geteSelect][i] == 1 ? 
-        (StepSeqModel::Gate)random(StepSeqModel::Gate::L, StepSeqModel::Gate::Max) : 
+        (StepSeqModel::Gate)random(StepSeqModel::Gate::H, StepSeqModel::Gate::Max) : 
         StepSeqModel::Gate::_;
         pssm->setGate(i, gate);
 
@@ -384,7 +389,7 @@ void generateSequence(StepSeqModel *pssm)
 
         // 基音(C0) + 音階はスケールに従いつつランダムで + オクターブ上下移動をランダムで(-1 or 0 ~ 2 * 12)
         // 0 ~ 24 + スケール音
-        pssm->setOctave(i, 1 + (random(-1, 3)));
+        pssm->setOctave(i, 1 + (random(-1, 2)));
         pssm->setKey(i, random(MAX_SCALE_KEY));
         pssm->setAcc(i, gate != StepSeqModel::Gate::_ && random(0, 6) == 1 ? 1 : 0);
     }
@@ -418,7 +423,7 @@ void resetSequence(StepSeqModel *pssm)
 
     for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
     {
-        pssm->setGate(i, StepSeqModel::Gate::L);
+        pssm->setGate(i, StepSeqModel::Gate::H);
         pssm->setOctave(i, 1);
         pssm->setKey(i, 0);
         pssm->setAcc(i, 0);
@@ -432,7 +437,7 @@ void resetGate(StepSeqModel *pssm)
 
     for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
     {
-        pssm->setGate(i, StepSeqModel::Gate::L);
+        pssm->setGate(i, StepSeqModel::Gate::H);
         pssm->setAcc(i, 0);
      }
 }

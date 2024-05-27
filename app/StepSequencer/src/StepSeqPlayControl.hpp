@@ -237,6 +237,16 @@ public:
         return _ssm.gateLenAdder.get();
     }
 
+    void addOctave(int8_t value)
+    {
+        _ssm.octaveAdder.add(value);
+    }
+
+    int8_t getOctave()
+    {
+        return _ssm.octaveAdder.get();
+    }
+
     void setAutoGenerative(int8_t value)
     {
         _auto_generative = value ? true : false;
@@ -370,7 +380,7 @@ public:
         uint8_t gateStart = _ssm.gateStep.pos.getMin();
         uint8_t gateEnd = _ssm.gateStep.pos.getMax();
 
-        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates, (uint8_t*)_ssm._accs, _ssm.gateLenAdder.get());
+        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates, (uint8_t*)_ssm._accs, _ssm.gateLenAdder.get(), _ssm.octaveAdder.get());
         _ssv.dispKeyPos(key);
         _ssv.dispGatePos(gate);
         _ssv.dispSettingPos(_settingPos.get());

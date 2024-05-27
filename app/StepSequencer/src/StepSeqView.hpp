@@ -19,7 +19,7 @@ public:
         _origin_y = origin_y;
     }
 
-    void dispSteps(uint8_t keyStart, uint8_t keyEnd, uint8_t gateStart, uint8_t gateEnd, uint8_t *pOcts, uint8_t *pKeys, uint8_t *pGates, uint8_t *pAccs, int8_t gateLenAdder)
+    void dispSteps(uint8_t keyStart, uint8_t keyEnd, uint8_t gateStart, uint8_t gateEnd, uint8_t *pOcts, uint8_t *pKeys, uint8_t *pGates, uint8_t *pAccs, int8_t gateLenAdder, int8_t octaveAddr)
     {
         static char disp_item[5] = {'-', 'S', 'H', 'L', 'G'};
         for (uint8_t i = 0; i < 16; ++i)
@@ -32,7 +32,7 @@ public:
             dispStepUnit(x, y,
                          keyInv,
                          gateInv,
-                         pOcts[i],
+                         constrain(pOcts[i] + octaveAddr, 0, 5),
                          pKeys[i],
                          disp_item[gate],
                          pAccs[i] == 1 ? '*' : ' '

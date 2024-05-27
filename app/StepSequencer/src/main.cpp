@@ -48,7 +48,7 @@ static int8_t menuIndex = 0;
 
 static uint interruptSliceNum;
 
-static const char *scale[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc"};
+static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc", "blu", "spa", "luo"};
 
 void initOLED()
 {
@@ -75,7 +75,7 @@ void dispOLED()
         u8g2.drawStr(52, 8, "SCALE ");
         sprintf(disp_buf, "-->%03d", sspc.getBPM());
         u8g2.drawStr(92, 0, disp_buf);
-        sprintf(disp_buf, "-->%s", scale[sspc.getScale()]);
+        sprintf(disp_buf, "-->%s", scaleNames[sspc.getScale()]);
         u8g2.drawStr(92, 8, disp_buf);
         break;
     case 1:
@@ -90,10 +90,11 @@ void dispOLED()
     case 2:
         u8g2.drawStr(0, 2, "SEQ RND");
         u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "ADDLEN ");
-        u8g2.drawStr(52, 8, "RSTLEN ");
-        u8g2.drawStr(92, 0, "SW->RND");
-        sprintf(disp_buf,   "LEN>% 1d", sspc.getGateLen());
+        u8g2.drawStr(52, 0, "ADDGATE");
+        u8g2.drawStr(52, 8, "ADDOCT ");
+        sprintf(disp_buf,   "GATE>%1d", sspc.getGateLen());
+        u8g2.drawStr(92, 0, disp_buf);
+        sprintf(disp_buf,   "OCT >%1d", sspc.getOctave());
         u8g2.drawStr(92, 8, disp_buf);
         break;
     case 3:
@@ -230,7 +231,7 @@ void setup()
     // sspc.generateTestToneSequence();
     sspc.setClockMode(StepSeqPlayControl::CLOCK::INT);
     sspc.requestResetAllSequence();
-    sspc.setBPM(128, 48);
+    sspc.setBPM(133, 48);
     sspc.start();
 
     initPWMIntr(PWM_INTR_PIN);
@@ -274,10 +275,11 @@ void loop()
         break;
     case 2:
         sspc.addGateLen(enc0);
-        if (enc1 != 0)
-        {
-            sspc.requestResetGate();
-        }        
+        sspc.addOctave(enc1);
+        // if (enc1 != 0)
+        // {
+        //     sspc.requestResetGate();
+        // }        
         if (btn0 == 2)
         {
             sspc.requestGenerateSequence();

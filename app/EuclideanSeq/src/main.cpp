@@ -66,12 +66,12 @@ static int8_t scaleIndex = 2;
 static int8_t requestSeqReset = 0;
 static int8_t duration = 20;
 static int8_t intPoler = 0;
-static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc"};
+static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc", "blu", "spa", "luo"};
 
 static uint interruptSliceNum;
 
 #define MAX_SCALE_KEY 7
-#define MAX_SCALES 7
+#define MAX_SCALES 10
 #define MAX_SCALES_M1 (MAX_SCALES - 1)
 // スケール
 static const uint8_t scales[MAX_SCALES][MAX_SCALE_KEY] =
@@ -83,6 +83,9 @@ static const uint8_t scales[MAX_SCALES][MAX_SCALE_KEY] =
     {0, 2, 4, 5, 7, 9, 10}, // mixolydian
     {0, 2, 3, 5, 7, 8, 10}, // aeolian / natural minor
     {0, 1, 3, 5, 6, 8, 10}, // locrian
+    {0, 2, 3, 4, 7, 9, 0},  // m.blues
+    {0, 1, 4, 5, 7, 8, 10}, // spanish
+    {0, 2, 4, 7, 9, 0, 2},  // luoyin
 };
 static float voltPerTone = 4095.0 / 12.0 / 5.0;
 
