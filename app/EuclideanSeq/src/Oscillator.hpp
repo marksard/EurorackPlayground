@@ -7,7 +7,6 @@
 
 #pragma once
 #include <Arduino.h>
-// #include "note.h"
 
 #define WAVE_LENGTH 4096
 #define WAVE_LENGTH_BIT 12
@@ -26,51 +25,6 @@
 
 #define OSC_WAVE_BIT 32
 #define OSC_WAVE_BIT32 4294967296 // 2^32
-
-template <typename vs = int8_t>
-class LimitValue
-{
-public:
-    LimitValue(vs limitMin, vs limitMax)
-    {
-        _value = 0;
-        _min = 0;
-        _max = 0;
-        _limitMax = limitMax;
-        _limitMin = limitMin;
-        setLimit(_min, _max);
-    }
-
-    LimitValue(vs limitMin, vs limitMax, vs min, vs max)
-    {
-        _value = 0;
-        _limitMax = limitMax;
-        _limitMin = limitMin;
-        setLimit(min, max);
-    }
-
-    void set(vs value) { _value = constrain(value, _min, _max); }
-    vs get() { return _value; }
-    void add(vs value) { _value = constrain(_value + value, _min, _max); }
-
-    void setLimit(vs min, vs max)
-    {
-        if (min == _min && max == _max) return;
-        _min = MIN(MAX(min, _limitMin), _max);
-        _max = MAX(MIN(max, _limitMax), _min);
-        set(_value);
-    }
-    vs getMin() { return _min; }
-    vs getMax() { return _max; }
-    vs getDiff() { return _max - _min; }
-
-private:
-    vs _value;
-    vs _min;
-    vs _max;
-    vs _limitMax;
-    vs _limitMin;
-};
 
 class Oscillator
 {

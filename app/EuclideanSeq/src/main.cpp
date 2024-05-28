@@ -29,7 +29,7 @@
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 #define LFO_MAX_COARSE_FREQ 10
-static float rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+// static float rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
 #define EXP_CURVE(value, ratio) (exp((value * (ratio / (ADC_RESO-1)))) - 1) / (exp(ratio) - 1)
 
 #ifdef USE_MCP4922
@@ -347,9 +347,9 @@ void loop()
     uint16_t pot0 = pot[0].analogReadDropLow4bit();
     uint16_t pot1 = pot[1].analogReadDropLow4bit();
 
-    // float coarseA = (float)pot1 / rateRatio;
-    float coarseA = EXP_CURVE((float)pot1, 3.0) * LFO_MAX_COARSE_FREQ;
-    float lfoFreq = max(coarseA, 0.01);
+    // float coarse = (float)pot1 / rateRatio;
+    float coarse = EXP_CURVE((float)pot1, 3.0) * LFO_MAX_COARSE_FREQ;
+    float lfoFreq = max(coarse, 0.01);
     intLFO.setFrequency(lfoFreq);
     uint16_t extCV = cv.analogReadDropLow4bit();
     uint16_t intCV = intLFO.getWaveValue();
