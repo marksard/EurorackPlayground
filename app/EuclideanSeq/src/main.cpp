@@ -275,6 +275,11 @@ void setDuration(int8_t duration)
     length = map(duration, 0, 100, 0, length);
     triggerOut[0].setDuration(length);
     triggerOut[1].setDuration(length);
+    // Serial.print(length);
+    // Serial.print(",");
+    // Serial.print(intClock.getMills());
+    // Serial.print(",");
+    // Serial.println();
 }
 
 void setup()
@@ -405,7 +410,6 @@ void loop()
     else if (menuIndex == 5)
     {
         duration = constrain(duration + (enc0 * 5), 5, 100);
-        setDuration(duration);
     }
     else if (menuIndex == 6)
     {
@@ -421,6 +425,8 @@ void loop()
         if (enc1 == -1)
             oscillo.setTrigger(false);
     }
+
+    setDuration(duration);
 
     sleep_us(100);
 }
