@@ -45,7 +45,9 @@ static RotaryEncoder enc[2];
 static SmoothAnalogRead vOct;
 static SmoothAnalogRead gate;
 
-static float rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+// static float rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+static float max_coarse_freq = VCO_MAX_COARSE_FREQ;
+#define EXP_CURVE(value, ratio) (exp((value * (ratio / (ADC_RESO-1)))) - 1) / (exp(ratio) - 1)
 
 const static float foldRatio = (float)ADC_RESO / (float)100;
 const static float waveRatio = (float)ADC_RESO / (float)(Oscillator::Wave::MAX+1);
@@ -245,11 +247,13 @@ void setup()
 
     if (userConfig.rangeMode)
     {
-        rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+        // rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+        max_coarse_freq = (float)LFO_MAX_COARSE_FREQ;
     }
     else
     {
-        rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+        // rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+        max_coarse_freq = (float)VCO_MAX_COARSE_FREQ;
     }
 
 #ifdef USE_MCP4922
@@ -278,8 +282,11 @@ void loop()
     uint16_t pot0 = pot[0].analogRead(true);
     uint16_t pot1 = pot[1].analogRead(true);
 
-    static float coarseA = (float)pot0 / rateRatio;
-    static float coarseB = (float)pot0 / rateRatio;
+    static float coarseA = EXP_CURVE((float)pot0, 2.0) * max_coarse_freq;
+    static float coarseB = EXP_CURVE((float)pot0, 2.0) * max_coarse_freq;
+
+    // static float coarseA = (float)pot0 / rateRatio;
+    // static float coarseB = (float)pot0 / rateRatio;
     static uint16_t lastPot0 = pot0;
     static uint8_t unlock = 0;
     static uint8_t lastMenuIndex = 0;
@@ -341,7 +348,8 @@ void loop()
     {
         if (unlock)
         {
-            coarseA = (float)pot0 / rateRatio;
+            coarseA = EXP_CURVE((float)pot0, 2.0) * max_coarse_freq;
+            // coarseA = (float)pot0 / rateRatio;
         }
         // OLED描画更新でノイズが乗るので必要時以外更新しない
         requiresUpdate |= osc[0].setNoteNameFromFrequency(coarseA);
@@ -370,7 +378,8 @@ void loop()
     {
         if (unlock)
         {
-            coarseB = (float)pot0 / rateRatio;
+            coarseB = EXP_CURVE((float)pot0, 2.0) * max_coarse_freq;
+            // coarseB = (float)pot0 / rateRatio;
         }
         // OLED描画更新でノイズが乗るので必要時以外更新しない
         requiresUpdate |= osc[1].setNoteNameFromFrequency(coarseB);
@@ -402,11 +411,13 @@ void loop()
         userConfig.rangeMode = mode;
         if (userConfig.rangeMode)
         {
-            rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+            // rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
+            max_coarse_freq = (float)LFO_MAX_COARSE_FREQ;
         }
         else
         {
-            rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+            // rateRatio = (float)ADC_RESO / (float)VCO_MAX_COARSE_FREQ;
+            max_coarse_freq = (float)VCO_MAX_COARSE_FREQ;
         }
         int8_t cvb = constrain((int)userConfig.cvAssigned + (int)enc1, 0, 1);
         requiresUpdate |= userConfig.cvAssigned != mode;
