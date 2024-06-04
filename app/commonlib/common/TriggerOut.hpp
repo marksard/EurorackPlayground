@@ -56,14 +56,14 @@ public:
 
     /// @brief トリガー長設定
     /// @param duration ms
-    inline void setDuration(uint8_t duration)
+    inline void setDuration(uint16_t duration)
     {
         _duration = duration;
     }
 
 protected:
     uint8_t _pin;
-    uint8_t _duration;
+    uint16_t _duration;
     int _status;
     unsigned long _lastMillis;
 
