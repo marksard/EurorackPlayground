@@ -280,7 +280,7 @@ public:
 #ifdef USE_MCP4922
             MCP.fastWriteA(value);
 #else
-            pwm_set_gpio_level(OUT_A, voct);
+            pwm_set_gpio_level(OUT_A, value);
 #endif
     }
 
