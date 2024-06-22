@@ -222,6 +222,7 @@ void setup()
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
     MCP.setSPIspeed(SPI_CLOCK);
+    // SPI1.begin(); // MCP_DAC 0.5.0 breaking change stop call spi.begin()
     MCP.begin(PIN_SPI1_SS);
 #else
     initPWM(OUT_A);
