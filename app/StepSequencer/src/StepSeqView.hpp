@@ -3,7 +3,7 @@
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
- */ 
+ */
 
 #pragma once
 #include <Arduino.h>
@@ -35,8 +35,7 @@ public:
                          constrain(pOcts[i] + octaveAddr, 0, 5),
                          pKeys[i],
                          disp_item[gate],
-                         pAccs[i] == 1 ? '*' : ' '
-                         );
+                         pAccs[i] == 1 ? '*' : ' ');
         }
     }
 
@@ -51,14 +50,14 @@ public:
     {
         uint8_t x = pos2X(value);
         uint8_t y = pos2Y(value);
-        _pU8g2->drawBox(x, y + 22, 7, 2);
+        _pU8g2->drawBox(x, y + 10, 16, 10);
     }
 
     void dispKeyPos(uint8_t value)
     {
         uint8_t x = pos2X(value);
         uint8_t y = pos2Y(value);
-        _pU8g2->drawBox(x + 8, y + 22, 7, 2);
+        _pU8g2->drawBox(x, y, 16, 10);
     }
 
 private:
@@ -69,27 +68,27 @@ private:
     void dispStepUnit(uint8_t x, uint8_t y, uint8_t keyInv, uint8_t gateInv, uint8_t oct, uint8_t key, uint8_t gate, uint8_t acc)
     {
         static char disp_buf[2] = {0};
-        disp_buf[0] = '0' + oct;
-        disp_buf[1] = '\0';
-        _pU8g2->drawStr(x + 2, y + 1, disp_buf);
-        disp_buf[0] = '0' + key;
-        disp_buf[1] = '\0';
-        _pU8g2->drawStr(x + 10, y + 1, disp_buf);
-        disp_buf[0] = acc;
-        disp_buf[1] = '\0';
-        _pU8g2->drawStr(x + 2, y + 10, disp_buf);
-        disp_buf[0] = gate;
-        disp_buf[1] = '\0';
-        _pU8g2->drawStr(x + 10, y + 10, disp_buf);
-        _pU8g2->drawFrame(x, y, 16, 19);
         if (keyInv)
         {
-            _pU8g2->drawBox(x, y, 16, 9);
+            disp_buf[0] = '0' + oct;
+            disp_buf[1] = '\0';
+            _pU8g2->drawStr(x + 2, y + 1, disp_buf);
+            disp_buf[0] = '0' + key;
+            disp_buf[1] = '\0';
+            _pU8g2->drawStr(x + 10, y + 1, disp_buf);
         }
+
         if (gateInv)
         {
-            _pU8g2->drawBox(x, y + 10, 16, 9);
+            disp_buf[0] = acc;
+            disp_buf[1] = '\0';
+            _pU8g2->drawStr(x + 2, y + 10, disp_buf);
+            disp_buf[0] = gate;
+            disp_buf[1] = '\0';
+            _pU8g2->drawStr(x + 10, y + 10, disp_buf);
         }
+        _pU8g2->drawFrame(x, y, 16, 10);
+        _pU8g2->drawFrame(x, y + 10, 16, 10);
     }
 
     uint8_t pos2X(uint8_t value) { return ((value % 8) * 16) + _origin_x; }

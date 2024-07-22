@@ -10,7 +10,7 @@
 #include <U8g2lib.h>
 #include "../../commonlib/common/TriggerInterface.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
-#include "../../commonlib/common/SyncInTrigger.hpp"
+//#include "../../commonlib/common/SyncInTrigger.hpp"
 #include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
@@ -35,6 +35,11 @@ public:
     StepSeqPlayControl(U8G2 *pU8g2)
         : _ssm(), _ssv(pU8g2, 0, 16)
         , _settingPos(DEF_MAX_STEP_M1, 0, DEF_MAX_STEP_M1)
+        , _octUnder(-1, 4, -1, 4)
+        , _octUpper(-1, 4, -1, 4)
+        , _gateMin(0, 5, 0, 5)
+        , _gateMax(0, 5, 0, 5)
+        , _gateInitial(0, 5, 0, 5)
     {
         _pTrigger = NULL;
         _clock = CLOCK::IGNORE;
@@ -46,9 +51,20 @@ public:
         _requestGenerateSequence = false;
         _requestResetAllSequence = false;
         _requestResetGate = false;
-        _auto_generative = false;
+        _auto_generative = 0;
+
+        _octUnder.set(-1);
+        _octUpper.set(1);
+        _gateMin.set(1);
+        _gateMax.set(5);
+        _gateInitial.set(1);
 
         // setClockMode(CLOCK::INT);
+    }
+
+    bool isStart()
+    {
+        return _pTrigger->isStart();
     }
 
     void start()
@@ -221,6 +237,11 @@ public:
         _ssm._scaleIndex.add(value);
     }
 
+    void setScale(int8_t value)
+    {
+        _ssm._scaleIndex.set(value);
+    }
+
     void moveSeq(int8_t value)
     {
         if (value == 0) return;
@@ -283,6 +304,22 @@ public:
             pwm_set_gpio_level(OUT_A, value);
 #endif
     }
+
+    void addOctUnder(int8_t value) { _octUnder.add(value); }
+    void addOctUpper(int8_t value) { _octUpper.add(value); }
+    void addGateMin(int8_t value) { _gateMin.add(value); }
+    void addGateMax(int8_t value) { _gateMax.add(value); }
+    void addGateInitial(int8_t value) { _gateInitial.add(value); }
+    void setOctUnder(int8_t value) { _octUnder.set(value); }
+    void setOctUpper(int8_t value) { _octUpper.set(value); }
+    void setGateMin(int8_t value) { _gateMin.set(value); }
+    void setGateMax(int8_t value) { _gateMax.set(value); }
+    void setGateInitial(int8_t value) { _gateInitial.set(value); }
+    int8_t getOctUnder() { return _octUnder.get(); }
+    int8_t getOctUpper() { return _octUpper.get(); }
+    int8_t getGateMin() { return _gateMin.get(); }
+    int8_t getGateMax() { return _gateMax.get(); }
+    int8_t getGateInitial() { return _gateInitial.get(); }
 
     void updateProcedure()
     {
@@ -430,7 +467,8 @@ public:
         if (resetSyncCount)
             _syncCount = 0;
         _seqReadyCount = 0;
-        ::generateSequence(&_ssm);
+        ::generateSequence(&_ssm, _octUnder.get(), _octUpper.get(), 
+            _gateMin.get(), _gateMax.get(), _gateInitial.get());
         _ssm.keyStep.setMode(Step::Mode::Forward);
         _ssm.gateStep.setMode(Step::Mode::Forward);
         // _ssm.keyStep.pos.setLimit(0, 16);
@@ -456,7 +494,7 @@ private:
     U8G2 *_pU8g2;
     TriggerInterface *_pTrigger;
     PollingTimeEvent _polling;
-    SyncInTrigger _syncIn;
+    // SyncInTrigger _syncIn;
     CLOCK _clock;
 
     uint8_t _seqReadyCount;
@@ -468,7 +506,13 @@ private:
     bool _requestGenerateSequence;
     bool _requestResetAllSequence;
     bool _requestResetGate;
-    bool _auto_generative;
+    int8_t _auto_generative;
+
+    LimitValue<int8_t> _octUnder;
+    LimitValue<int8_t> _octUpper;
+    LimitValue<int8_t> _gateMin;
+    LimitValue<int8_t> _gateMax;
+    LimitValue<int8_t> _gateInitial;
 
     uint8_t _ppq;
 };

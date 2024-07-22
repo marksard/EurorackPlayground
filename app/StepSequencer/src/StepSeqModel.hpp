@@ -59,16 +59,6 @@ void initArray(vs *pArray, vs size)
         pArray[i] = 0;
 }
 
-template <typename vs = int8_t>
-vs constrainCyclic(vs value, vs min, vs max)
-{
-    if (value > max)
-        return min;
-    if (value < min)
-        return max;
-    return value;
-}
-
 template <typename vs = uint8_t>
 void printArray(vs *pArray, vs size)
 {
@@ -365,9 +355,21 @@ public:
     uint8_t _accs[MAX_STEP];
     StepSeqModel::Gate _gates[MAX_STEP];
     LimitValue<int8_t> _scaleIndex;
+
+private:
+
+    template <typename vs = int8_t>
+    vs constrainCyclic(vs value, vs min, vs max)
+    {
+        if (value > max)
+            return min;
+        if (value < min)
+            return max;
+        return value;
+    }
 };
 
-void generateSequence(StepSeqModel *pssm)
+void generateSequence(StepSeqModel *pssm, int8_t octUnder, int8_t octUpper, int8_t gateMin, int8_t gateMax, int8_t gateInitial)
 {
     Serial.println("generateSequence\n");
     randomSeed(micros());
@@ -377,8 +379,8 @@ void generateSequence(StepSeqModel *pssm)
     {
         // タイミングマップにランダムでタイミングをorして足す
         StepSeqModel::Gate gate = gateMap[geteSelect][i] == 1 ? 
-        (StepSeqModel::Gate)random(StepSeqModel::Gate::H, StepSeqModel::Gate::Max) : 
-        StepSeqModel::Gate::_;
+        (StepSeqModel::Gate)random((StepSeqModel::Gate)gateMin, (StepSeqModel::Gate)gateMax) : 
+        (StepSeqModel::Gate)gateInitial;
         pssm->setGate(i, gate);
 
         // 変更前のメロディーラインをランダムに残して繋がりを持たせる
@@ -389,7 +391,7 @@ void generateSequence(StepSeqModel *pssm)
 
         // 基音(C0) + 音階はスケールに従いつつランダムで + オクターブ上下移動をランダムで(-1 or 0 ~ 2 * 12)
         // 0 ~ 24 + スケール音
-        pssm->setOctave(i, 1 + (random(-1, 2)));
+        pssm->setOctave(i, 1 + (random(octUnder, octUpper)));
         pssm->setKey(i, random(MAX_SCALE_KEY));
         pssm->setAcc(i, gate != StepSeqModel::Gate::_ && random(0, 6) == 1 ? 1 : 0);
     }
