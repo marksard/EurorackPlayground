@@ -299,28 +299,29 @@ public:
         }
         else if (_seqReadyCount > _seqGateOffStep * 3)
         {
-            setSyncOut(LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 3 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::L)
         {
             gpio_put(GATE_A, LOW);
-            setSyncOut(LOW);
             setAcc(LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep * 2 &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::H)
         {
             gpio_put(GATE_A, LOW);
-            setSyncOut(LOW);
             setAcc(LOW);
         }
         else if (_seqReadyCount >= _seqGateOffStep &&
                  _ssm.getPlayGate() == StepSeqModel::Gate::S)
         {
             gpio_put(GATE_A, LOW);
-            setSyncOut(LOW);
             setAcc(LOW);
+        }
+
+        if (_seqReadyCount >= _seqGateOffStep)
+        {
+            setSyncOut(LOW);
         }
 
         if (_seqReadyCount == 0)
@@ -358,6 +359,10 @@ public:
             {
                 setSyncOut(HIGH);
                 _syncCount = 4 - _ppq;
+            }
+            else if (_syncCount < (_ppq >> 1))
+            {
+                setSyncOut(LOW);
             }
 
             if (_ssm.getPlayAcc())
