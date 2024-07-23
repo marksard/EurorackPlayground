@@ -18,14 +18,20 @@ public:
         init(pin);
     }
     
+    TriggerOut(uint8_t pin, bool initPin)
+    {
+        init(pin, initPin);
+    }
+
     /// @brief ピン設定
     /// @param pin
-    void init(uint8_t pin)
+    void init(uint8_t pin, bool initPin = true)
     {
         _pin = pin;
         _duration = 10;
-
-        pinMode(pin, OUTPUT);
+        _initPin = initPin;
+        if (_initPin == true)
+            pinMode(pin, OUTPUT);
     }
 
     /// @brief 出力ON/OFF更新
@@ -33,25 +39,61 @@ public:
     /// @param status 
     inline void update(int status)
     {
-        if (_status == 0 && status == 1)
+        if (_status == 0 && status != 0)
         {
-            // Serial.println("edge on");
             _status = 1;
             _lastMillis = millis();
             writePin(_status);
         }
-        // else if (_status == 1 && status == 0)
-        // {
-        //     Serial.println("edge off");
-        //     _status = 0;
-        //     writePin(_status);
-        // }
         else if (_status == 1 && (millis() - _lastMillis) > _duration)
         {
             _status = 0;
-            // Serial.println("time over off");
             writePin(_status);
         }
+    }
+
+    inline int getTriggerGate(int status, int triggerMode)
+    {
+        // Serial.print(status);
+        // Serial.print(",");
+        // Serial.println();
+        if (!triggerMode)
+        {
+            return status;
+        }
+
+        if (_status == 0 && status != 0)
+        {
+            // Serial.println("edge on");
+            _status = 1;
+            _lastMillis = millis();
+            return 1;
+        }
+        else if (_status == 1)
+        {
+            if ((millis() - _lastMillis) > _duration)
+            {
+                _status = 2;
+                return 0;
+            }
+
+            return 1;
+        }
+        else if (_status == 2)
+        {
+            if (status == 0)
+            {
+                // Serial.println("edge off");
+                _status = 0;
+            }
+        }
+
+        return 0;
+    }
+
+    inline void set(int status)
+    {
+        writePin(status);
     }
 
     /// @brief トリガー長設定
@@ -66,6 +108,7 @@ protected:
     uint16_t _duration;
     int _status;
     unsigned long _lastMillis;
+    bool _initPin;
 
     /// @brief ピン値読込
     /// @return

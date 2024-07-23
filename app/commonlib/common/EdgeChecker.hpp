@@ -22,10 +22,7 @@ public:
     /// @param pin
     void init(uint8_t pin)
     {
-        _pin = pin;
-
-        pinMode(pin, INPUT);
-
+        setPin(pin);
         // 空読み
         for(int i = 0; i < 8; ++i)
         {
@@ -59,7 +56,7 @@ public:
         return edge;
     }
 
-    inline uint8_t getBPM(byte bpmReso = 4)
+    inline uint16_t getBPM(byte bpmReso = 4)
     {
         return (60.0 * 1000000.0) / (_duration * bpmReso);
     }
@@ -67,6 +64,19 @@ public:
     inline int getDurationMills()
     {
         return _duration / 1000;
+    }
+
+    inline int getDurationMicros()
+    {
+        return _duration;
+    }
+
+    inline bool getValue() { return _lastValue; }
+
+    inline void setPin(byte pin)
+    {
+        _pin = pin;
+        pinMode(pin, INPUT);
     }
 
 protected:

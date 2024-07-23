@@ -32,7 +32,7 @@
 MCP4922 MCP(&SPI1);
 // pwm_set_clkdivの演算で結果的に3
 // SPI処理が重めのため3
-#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 3)
+#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 20)
 #else
 // pwm_set_clkdivの演算で結果的に1
 // #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)

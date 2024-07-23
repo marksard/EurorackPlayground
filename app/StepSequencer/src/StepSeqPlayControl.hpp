@@ -10,7 +10,8 @@
 #include <U8g2lib.h>
 #include "../../commonlib/common/TriggerInterface.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
-//#include "../../commonlib/common/SyncInTrigger.hpp"
+// #include "../../commonlib/common/SyncInTrigger.hpp"
+#include "../../commonlib/common/TriggerOut.hpp"
 #include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
@@ -21,6 +22,28 @@ static float voltPerTone = 4095.0 / 12.0 / 5.0;
 #include "MCP_DAC.h"
 extern MCP4922 MCP;
 #endif
+
+class TriggerOutPWM : public TriggerOut
+{
+public:
+    TriggerOutPWM() : TriggerOut() {}
+    TriggerOutPWM(uint8_t pin) : TriggerOut(pin) {}
+    TriggerOutPWM(uint8_t pin, bool initPin) : TriggerOut(pin, initPin) {}
+
+protected:
+    /// @brief ピン値読込
+    /// @return
+    void writePin(int status) override
+    {
+        uint16_t out = status ? 2047 : 0;
+#ifdef USE_MCP4922
+        MCP.fastWriteB(out);
+#else
+        pwm_set_gpio_level(OUT_B, out);
+#endif
+    }
+};
+
 class StepSeqPlayControl
 {
 public:
@@ -34,24 +57,24 @@ public:
 public:
     StepSeqPlayControl(U8G2 *pU8g2)
         : _ssm(), _ssv(pU8g2, 0, 16)
-        , _settingPos(DEF_MAX_STEP_M1, 0, DEF_MAX_STEP_M1)
-        , _octUnder(-1, 4, -1, 4)
-        , _octUpper(-1, 4, -1, 4)
-        , _gateMin(0, 5, 0, 5)
-        , _gateMax(0, 5, 0, 5)
-        , _gateInitial(0, 5, 0, 5)
+          , _settingPos(DEF_MAX_STEP_M1, 0, DEF_MAX_STEP_M1),
+          _octUnder(-1, 4, -1, 4),
+          _octUpper(-1, 4, -1, 4),
+          _gateMin(0, 5, 0, 5),
+          _gateMax(0, 5, 0, 5),
+          _gateInitial(0, 5, 0, 5)
+          // , _syncIn(GATE)
+          , _gateOut(GATE_A)
+          , _accOut(OUT_B)
+          , _syncOut(GATE_B)
     {
         _pTrigger = NULL;
         _clock = CLOCK::IGNORE;
         _seqReadyCount = 0;
         _seqReadyCountMax = 0;
-        _syncCount = 0;
-        _seqGateOffStep = 0;
         _ppq = 4;
         _requestGenerateSequence = false;
         _requestResetAllSequence = false;
-        _requestResetGate = false;
-        _auto_generative = 0;
 
         _octUnder.set(-1);
         _octUpper.set(1);
@@ -59,7 +82,11 @@ public:
         _gateMax.set(5);
         _gateInitial.set(1);
 
-        // setClockMode(CLOCK::INT);
+        _gateOut.setDuration(10);
+        _accOut.setDuration(200);
+        _syncOut.setDuration(10);
+
+        setClockMode(CLOCK::INT);
     }
 
     bool isStart()
@@ -80,7 +107,6 @@ public:
     void reset()
     {
         _seqReadyCount = 0;
-        _syncCount = 0;
         _ssm.keyStep.resetPlayStep();
         _ssm.gateStep.resetPlayStep();
     }
@@ -99,16 +125,15 @@ public:
 
     void setClockMode(CLOCK clock)
     {
-        if (_clock == clock) return;
+        if (_clock == clock)
+            return;
 
         _clock = clock;
         if (clock == CLOCK::INT)
         {
-            pinMode(GATE_B, OUTPUT);
             if (_pTrigger != NULL)
             {
                 _seqReadyCountMax = 48 / 4;
-                _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
                 if (_pTrigger->isStart())
                 {
                     _polling.start();
@@ -117,11 +142,9 @@ public:
             _pTrigger = &_polling;
         }
         // else {
-        //     _syncIn.setPin(GATE_B);
         //     if (_pTrigger != NULL)
         //     {
         //         _seqReadyCountMax = 4 / 4;
-        //         _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
         //         if (_pTrigger->isStart())
         //         {
         //             _syncIn.start();
@@ -135,7 +158,8 @@ public:
 
     void addBPM(int8_t value)
     {
-        if (value == 0) return;
+        if (value == 0)
+            return;
         uint8_t bpm = constrain(_pTrigger->getBPM() + value, 0, 255);
         _pTrigger->setBPM(bpm);
     }
@@ -145,22 +169,21 @@ public:
         if (_pTrigger->setBPM(bpm, bpmReso))
         {
             _seqReadyCountMax = bpmReso / 4;
-            _seqGateOffStep = (float)_seqReadyCountMax / 4.0;
         }
     }
 
     uint8_t getBPM() { return _pTrigger->getBPM(); }
     int8_t getScale() { return _ssm._scaleIndex.get(); }
 
-
     void addPPQ(int8_t value)
     {
-        if (value == 0) return;
-        uint8_t ppq = constrain(_ppq + value, 1 , 4);
+        if (value == 0)
+            return;
+        uint8_t ppq = constrain(_ppq + value, 1, 4);
         _ppq = ppq;
     }
 
-    void setPPQ(uint8_t value) { _ppq = value;}
+    void setPPQ(uint8_t value) { _ppq = value; }
     uint8_t getPPQ() { return _ppq; }
 
     void setSettingPos(int8_t value)
@@ -173,8 +196,8 @@ public:
         uint8_t pos = _settingPos.get();
         uint8_t current = _ssm.getGate(pos);
         _ssm.setGate(pos,
-        (StepSeqModel::Gate)constrain((current + value),
-            StepSeqModel::Gate::_, StepSeqModel::Gate::G));
+                     (StepSeqModel::Gate)constrain((current + value),
+                                                   StepSeqModel::Gate::_, StepSeqModel::Gate::G));
     }
 
     void addNote(int8_t value)
@@ -197,29 +220,29 @@ public:
     void addGateLimit(int8_t min, int8_t max)
     {
         _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + min,
-                _ssm.gateStep.pos.getMax() + max);
+                                   _ssm.gateStep.pos.getMax() + max);
     }
 
     void addKeyLimit(int8_t min, int8_t max)
     {
         _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + min,
-                _ssm.keyStep.pos.getMax() + max);
+                                  _ssm.keyStep.pos.getMax() + max);
     }
 
     void addGateKeyStart(int8_t gate, int8_t key)
     {
         _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin() + gate,
-                _ssm.gateStep.pos.getMax());
+                                   _ssm.gateStep.pos.getMax());
         _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin() + key,
-                _ssm.keyStep.pos.getMax());
+                                  _ssm.keyStep.pos.getMax());
     }
 
     void addGateKeyEnd(int8_t gate, int8_t key)
     {
         _ssm.gateStep.pos.setLimit(_ssm.gateStep.pos.getMin(),
-                _ssm.gateStep.pos.getMax() + gate);
+                                   _ssm.gateStep.pos.getMax() + gate);
         _ssm.keyStep.pos.setLimit(_ssm.keyStep.pos.getMin(),
-                _ssm.keyStep.pos.getMax() + key);
+                                  _ssm.keyStep.pos.getMax() + key);
     }
 
     void addGateStepMode(int8_t value)
@@ -244,7 +267,8 @@ public:
 
     void moveSeq(int8_t value)
     {
-        if (value == 0) return;
+        if (value == 0)
+            return;
         _ssm.moveSeq(value > 0 ? StepSeqModel::SeqMove::RIGHT : StepSeqModel::SeqMove::LEFT);
     }
 
@@ -268,40 +292,12 @@ public:
         return _ssm.octaveAdder.get();
     }
 
-    void setAutoGenerative(int8_t value)
-    {
-        _auto_generative = value ? true : false;
-    }
-
-    int8_t getAutoGenerative()
-    {
-        return _auto_generative ? 1 : 0;
-    }
-
-    void setSyncOut(int8_t value)
-    {
-        if (_clock == CLOCK::INT)
-        {
-            gpio_put(GATE_B, value);
-        }
-    }
-
-    void setAcc(int8_t value)
-    {
-        uint16_t out = value ? 4095 : 0;
-#ifdef USE_MCP4922
-            MCP.fastWriteB(value);
-#else
-            pwm_set_gpio_level(OUT_B, value);
-#endif
-    }
-
     void setVOct(uint16_t value)
     {
 #ifdef USE_MCP4922
-            MCP.fastWriteA(value);
+        MCP.fastWriteA(value);
 #else
-            pwm_set_gpio_level(OUT_A, value);
+        pwm_set_gpio_level(OUT_A, value);
 #endif
     }
 
@@ -310,6 +306,7 @@ public:
     void addGateMin(int8_t value) { _gateMin.add(value); }
     void addGateMax(int8_t value) { _gateMax.add(value); }
     void addGateInitial(int8_t value) { _gateInitial.add(value); }
+
     void setOctUnder(int8_t value) { _octUnder.set(value); }
     void setOctUpper(int8_t value) { _octUpper.set(value); }
     void setGateMin(int8_t value) { _gateMin.set(value); }
@@ -321,10 +318,44 @@ public:
     int8_t getGateMax() { return _gateMax.get(); }
     int8_t getGateInitial() { return _gateInitial.get(); }
 
+    void updateGateOut(bool updateDuration)
+    {
+        if (updateDuration)
+        {
+            int length = _pTrigger->getMills() * _seqReadyCountMax;
+            int duration = _ssm.getGateDulation();
+            length = map(duration, 0, 100, 0, length);
+            _gateOut.setDuration(length);
+            _accOut.update(_ssm.getPlayAcc() != 0);
+            _syncOut.setDuration(length >> 2);
+            _syncOut.update(1);
+        }
+        else
+        {
+            _accOut.update(0);
+            _syncOut.update(0);
+        }
+
+        uint8_t playGate = _ssm.getPlayGate();
+        if (playGate == StepSeqModel::Gate::_)
+        {
+            _gateOut.set(0);
+        }
+        else if (playGate == StepSeqModel::Gate::G)
+        {
+            _gateOut.set(1);
+        }
+        else
+        {
+            _gateOut.update(updateDuration == true);
+        }
+    }
+
     void updateProcedure()
     {
         if (!_pTrigger->ready())
         {
+            updateGateOut(false);
             return;
         }
 
@@ -333,32 +364,6 @@ public:
             _seqReadyCount = 0;
             _ssm.keyStep.nextPlayStep();
             _ssm.gateStep.nextPlayStep();
-        }
-        else if (_seqReadyCount > _seqGateOffStep * 3)
-        {
-        }
-        else if (_seqReadyCount >= _seqGateOffStep * 3 &&
-                 _ssm.getPlayGate() == StepSeqModel::Gate::L)
-        {
-            gpio_put(GATE_A, LOW);
-            setAcc(LOW);
-        }
-        else if (_seqReadyCount >= _seqGateOffStep * 2 &&
-                 _ssm.getPlayGate() == StepSeqModel::Gate::H)
-        {
-            gpio_put(GATE_A, LOW);
-            setAcc(LOW);
-        }
-        else if (_seqReadyCount >= _seqGateOffStep &&
-                 _ssm.getPlayGate() == StepSeqModel::Gate::S)
-        {
-            gpio_put(GATE_A, LOW);
-            setAcc(LOW);
-        }
-
-        if (_seqReadyCount >= _seqGateOffStep)
-        {
-            setSyncOut(LOW);
         }
 
         if (_seqReadyCount == 0)
@@ -375,41 +380,17 @@ public:
                     _requestResetAllSequence = false;
                     resetAllSequence();
                 }
-                if (_requestResetGate)
-                {
-                    _requestResetGate = false;
-                    resetGate();
-                }
-                if (_auto_generative)
-                {
-                    generateSequence(false);
-                    setLimitStepAtRandom();
-                }
             }
 
             uint16_t voct = _ssm.getPlayNote() * voltPerTone;
             setVOct(voct);
-            uint8_t gate = _ssm.getPlayGate() != StepSeqModel::Gate::_ ? HIGH : LOW;
-            gpio_put(GATE_A, gate);
-            _syncCount--;
-            if (_syncCount < 0)
-            {
-                setSyncOut(HIGH);
-                _syncCount = 4 - _ppq;
-            }
-            else if (_syncCount < (_ppq >> 1))
-            {
-                setSyncOut(LOW);
-            }
-
-            if (_ssm.getPlayAcc())
-            {
-                setAcc(HIGH);
-            }
-            else {
-                setAcc(LOW);
-            }
+            updateGateOut(true);
         }
+        else
+        {
+            updateGateOut(false);
+        }
+
         _seqReadyCount++;
     }
 
@@ -422,17 +403,10 @@ public:
         uint8_t gateStart = _ssm.gateStep.pos.getMin();
         uint8_t gateEnd = _ssm.gateStep.pos.getMax();
 
-        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t*)_ssm._gates, (uint8_t*)_ssm._accs, _ssm.gateLenAdder.get(), _ssm.octaveAdder.get());
+        _ssv.dispSteps(keyStart, keyEnd, gateStart, gateEnd, _ssm._octaves, _ssm._keys, (uint8_t *)_ssm._gates, (uint8_t *)_ssm._accs, _ssm.gateLenAdder.get(), _ssm.octaveAdder.get());
         _ssv.dispKeyPos(key);
         _ssv.dispGatePos(gate);
         _ssv.dispSettingPos(_settingPos.get());
-    }
-
-    void generateTestToneSequence()
-    {
-        _syncCount = 0;
-        _seqReadyCount = 0;
-        ::generateTestToneSequence(&_ssm);
     }
 
     void requestGenerateSequence()
@@ -445,47 +419,21 @@ public:
         _requestResetAllSequence = true;
     }
 
-    void requestResetGate()
-    {
-        _requestResetGate = true;
-    }
-
     void resetAllSequence()
     {
-        _syncCount = 0;
         ::resetSequence(&_ssm);
-    }
-
-    void resetGate()
-    {
-        _syncCount = 0;
-        ::resetGate(&_ssm);
     }
 
     void generateSequence(bool resetSyncCount = true)
     {
-        if (resetSyncCount)
-            _syncCount = 0;
         _seqReadyCount = 0;
-        ::generateSequence(&_ssm, _octUnder.get(), _octUpper.get(), 
-            _gateMin.get(), _gateMax.get(), _gateInitial.get());
+        ::generateSequence(&_ssm, _octUnder.get(), _octUpper.get(),
+                           _gateMin.get(), _gateMax.get(), _gateInitial.get());
         _ssm.keyStep.setMode(Step::Mode::Forward);
         _ssm.gateStep.setMode(Step::Mode::Forward);
-        // _ssm.keyStep.pos.setLimit(0, 16);
-        // _ssm.gateStep.pos.setLimit(0, 16);
         _ssm.keyStep.resetPlayStep();
         _ssm.gateStep.resetPlayStep();
         _ssm.printSeq();
-    }
-    
-    void setLimitStepAtRandom()
-    {
-        _ssm.keyStep.resetPlayStep();
-        _ssm.gateStep.resetPlayStep();
-        _ssm.keyStep.pos.setLimit(random(0, 3), random(4, 16));
-        _ssm.gateStep.pos.setLimit(random(0, 3), random(4, 16));
-        _ssm.keyStep.setMode((Step::Mode)random((long)Step::Mode::Max));
-        _ssm.gateStep.setMode((Step::Mode)random((long)Step::Mode::Max));
     }
 
 private:
@@ -499,20 +447,20 @@ private:
 
     uint8_t _seqReadyCount;
     uint8_t _seqReadyCountMax;
-    int8_t _syncCount;
-    float _seqGateOffStep;
     LimitValue<int8_t> _settingPos;
 
     bool _requestGenerateSequence;
     bool _requestResetAllSequence;
-    bool _requestResetGate;
-    int8_t _auto_generative;
 
     LimitValue<int8_t> _octUnder;
     LimitValue<int8_t> _octUpper;
     LimitValue<int8_t> _gateMin;
     LimitValue<int8_t> _gateMax;
     LimitValue<int8_t> _gateInitial;
+
+    TriggerOut _gateOut;
+    TriggerOutPWM _accOut;
+    TriggerOut _syncOut;
 
     uint8_t _ppq;
 };

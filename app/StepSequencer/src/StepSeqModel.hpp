@@ -227,6 +227,8 @@ public:
         Max,
     };
 
+    const uint8_t GateDulation[Gate::Max] = {0, 25, 50, 75, 100};
+
     enum SeqMove
     {
         LEFT,
@@ -262,6 +264,7 @@ public:
 
     uint8_t getPlayNote() { return (constrain(getPlayOctave() + octaveAdder.get(), 0, 5) * 12) + scales[_scaleIndex.get()][getPlayKey()]; }
 
+    uint8_t getGateDulation() { return GateDulation[getPlayGate()]; }
 
     void moveSeq(SeqMove move)
     {
@@ -397,25 +400,25 @@ void generateSequence(StepSeqModel *pssm, int8_t octUnder, int8_t octUpper, int8
     }
 }
 
-void generateTestToneSequence(StepSeqModel *pssm)
-{
-    Serial.println("generateTestToneSequence\n");
-    byte geteSelect = random(MAX_GATE_TIMINGS);
+// void generateTestToneSequence(StepSeqModel *pssm)
+// {
+//     Serial.println("generateTestToneSequence\n");
+//     byte geteSelect = random(MAX_GATE_TIMINGS);
 
-    for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
-    {
-        if (i < 11)
-        {
-            pssm->setGate(i, i&1?StepSeqModel::Gate::_ : StepSeqModel::Gate::G);
-        }
-        else{
-            pssm->setGate(i, i&1?StepSeqModel::Gate::S : StepSeqModel::Gate::H);
-        }
-        pssm->setOctave(i, (i>>1)%6);
-        pssm->setKey(i, 0);
-        pssm->setAcc(i, 0);
-     }
-}
+//     for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
+//     {
+//         if (i < 11)
+//         {
+//             pssm->setGate(i, i&1?StepSeqModel::Gate::_ : StepSeqModel::Gate::G);
+//         }
+//         else{
+//             pssm->setGate(i, i&1?StepSeqModel::Gate::S : StepSeqModel::Gate::H);
+//         }
+//         pssm->setOctave(i, (i>>1)%6);
+//         pssm->setKey(i, 0);
+//         pssm->setAcc(i, 0);
+//      }
+// }
 
 
 void resetSequence(StepSeqModel *pssm)
@@ -432,14 +435,14 @@ void resetSequence(StepSeqModel *pssm)
      }
 }
 
-void resetGate(StepSeqModel *pssm)
-{
-    Serial.println("resetGate\n");
-    byte geteSelect = random(MAX_GATE_TIMINGS);
+// void resetGate(StepSeqModel *pssm)
+// {
+//     Serial.println("resetGate\n");
+//     byte geteSelect = random(MAX_GATE_TIMINGS);
 
-    for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
-    {
-        pssm->setGate(i, StepSeqModel::Gate::H);
-        pssm->setAcc(i, 0);
-     }
-}
+//     for (byte i = 0; i < StepSeqModel::MAX_STEP; ++i)
+//     {
+//         pssm->setGate(i, StepSeqModel::Gate::H);
+//         pssm->setAcc(i, 0);
+//      }
+// }

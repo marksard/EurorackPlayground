@@ -43,7 +43,7 @@ public:
     {
         uint8_t x = pos2X(value);
         uint8_t y = pos2Y(value);
-        _pU8g2->drawBox(x, y + 20, 16, 1);
+        _pU8g2->drawBox(x, y + 20, 16, 3);
     }
 
     void dispGatePos(uint8_t value)
@@ -87,6 +87,7 @@ private:
             disp_buf[1] = '\0';
             _pU8g2->drawStr(x + 10, y + 10, disp_buf);
         }
+
         _pU8g2->drawFrame(x, y, 16, 10);
         _pU8g2->drawFrame(x, y + 10, 16, 10);
     }
