@@ -28,7 +28,7 @@
 #define PWM_RESO 4096         // 12bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
-#define LFO_MAX_COARSE_FREQ 10
+#define LFO_MAX_COARSE_FREQ 99
 // static float rateRatio = (float)ADC_RESO / (float)LFO_MAX_COARSE_FREQ;
 #define EXP_CURVE(value, ratio) (exp((value * (ratio / (ADC_RESO-1)))) - 1) / (exp(ratio) - 1)
 
@@ -100,7 +100,7 @@ void initOLED()
 
 void dispOLED()
 {
-    static char disp_buf[4][32] = {0};
+    static char disp_buf[5][32] = {0};
 
     if (menuIndex < 2)
     {
@@ -409,7 +409,7 @@ void loop()
     }
     else if (menuIndex == 5)
     {
-        duration = constrain(duration + (enc0 * 5), 5, 100);
+        duration = constrain(duration + (enc0 * 2), 2, 100);
     }
     else if (menuIndex == 6)
     {
