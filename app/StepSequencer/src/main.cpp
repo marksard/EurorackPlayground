@@ -30,8 +30,6 @@
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
 MCP4922 MCP(&SPI1);
-// pwm_set_clkdivの演算で結果的に3
-// SPI処理が重めのため3
 #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 20)
 #else
 // pwm_set_clkdivの演算で結果的に1
@@ -40,10 +38,12 @@ MCP4922 MCP(&SPI1);
 #endif
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
-static StepSeqPlayControl sspc(&u8g2);
-static Button buttons[2];
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
+static Button buttons[2];
+
+static StepSeqPlayControl sspc(&u8g2);
+
 static int8_t menuIndex = 0;
 
 static uint interruptSliceNum;
