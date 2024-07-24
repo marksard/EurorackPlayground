@@ -44,11 +44,23 @@ static Button buttons[2];
 
 static StepSeqPlayControl sspc(&u8g2);
 
+#define MENU_MAX (16)
 static int8_t menuIndex = 0;
+static uint8_t requiresUpdate = 1;
 
 static uint interruptSliceNum;
 
 static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc", "blu", "spa", "luo"};
+
+template <typename vs = int8_t>
+vs constrainCyclic(vs value, vs min, vs max)
+{
+    if (value > max)
+        return min;
+    if (value < min)
+        return max;
+    return value;
+}
 
 void initOLED()
 {
@@ -69,91 +81,68 @@ void dispOLED()
     switch (menuIndex)
     {
     case 0:
-        u8g2.drawStr(0, 2, "PPQ");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "PPQ   ");
-        u8g2.drawStr(52, 8, "      ");
-        sprintf(disp_buf, "-->%03d", sspc.getPPQ());
-        u8g2.drawStr(92, 0, disp_buf);
-        u8g2.drawStr(92, 8, "      ");
+        u8g2.drawStr(0, 0, "GENERATE :RST<>GEN");
         break;
     case 1:
-        u8g2.drawStr(0, 2, "BPM/SCL");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "BPM   ");
-        u8g2.drawStr(52, 8, "SCALE ");
-        sprintf(disp_buf, "-->%03d", sspc.getBPM());
-        u8g2.drawStr(92, 0, disp_buf);
-        sprintf(disp_buf, "-->%s", scaleNames[sspc.getScale()]);
-        u8g2.drawStr(92, 8, disp_buf);
+        sprintf(disp_buf,  "GATE SHFT: %1d", sspc.getGateLen());
+        u8g2.drawStr(0, 0, disp_buf);
         break;
     case 2:
-        u8g2.drawStr(0, 2, "PLY/STP");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "CW:PLY");
-        u8g2.drawStr(52, 8, "CC:STP");
-        u8g2.drawStr(92, 0, "      ");
-        u8g2.drawStr(92, 8, "      ");
+        sprintf(disp_buf,  "OCT  SHFT: %1d", sspc.getOctave());
+        u8g2.drawStr(0, 0, disp_buf);
         break;
     case 3:
-        u8g2.drawStr(0, 2, "SEQRND1");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "ADDGATE");
-        u8g2.drawStr(52, 8, "ADDOCT ");
-        sprintf(disp_buf,   "GATE>%1d", sspc.getGateLen());
-        u8g2.drawStr(92, 0, disp_buf);
-        sprintf(disp_buf,   "OCT >%1d", sspc.getOctave());
-        u8g2.drawStr(92, 8, disp_buf);
+        u8g2.drawStr(0, 0, "ROTATE   : L <> R");
         break;
     case 4:
-        u8g2.drawStr(0, 2, "SEQRND2");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "OCT ");
-        u8g2.drawStr(52, 8, "OCT ");
-        sprintf(disp_buf,   "MIN >%1d", sspc.getOctUnder());
-        u8g2.drawStr(92, 0, disp_buf);
-        sprintf(disp_buf,   "MAX >%1d", sspc.getOctUpper());
-        u8g2.drawStr(92, 8, disp_buf);
+        u8g2.drawStr(0, 0, "STEP LEN :1 to 16");
         break;
     case 5:
-        u8g2.drawStr(0, 2, "SEQRND3");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "GATE");
-        u8g2.drawStr(52, 8, "GATE");
-        sprintf(disp_buf,   "MIN >%1d", sspc.getGateMin());
-        u8g2.drawStr(92, 0, disp_buf);
-        sprintf(disp_buf,   "MAX >%1d", sspc.getGateMax());
-        u8g2.drawStr(92, 8, disp_buf);
+        u8g2.drawStr(0, 0, "EDIT NOTE:00to 50");
         break;
     case 6:
-        u8g2.drawStr(0, 2, "SEQRND4");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "GATE");
-        u8g2.drawStr(52, 8, "    ");
-        sprintf(disp_buf,   "INI >%1d", sspc.getGateInitial());
-        u8g2.drawStr(92, 0, disp_buf);
-        u8g2.drawStr(92, 8, "      ");
+        u8g2.drawStr(0, 0, "EDIT GATE: - to G");
         break;
     case 7:
-        u8g2.drawStr(0, 2, "SEQ MOV");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "MOVE  ");
-        u8g2.drawStr(52, 8, "RANGE ");
-        u8g2.drawStr(92, 0, "      ");
-        u8g2.drawStr(92, 8, "      ");
+        u8g2.drawStr(0, 0, "EDIT ACC : _ or *");
         break;
     case 8:
-        u8g2.drawStr(0, 2, "KEY EDT");
-        u8g2.setFont(u8g2_font_5x8_tf);
-        u8g2.drawStr(52, 0, "KEY   ");
-        u8g2.drawStr(52, 8, "GATE  ");
-        u8g2.drawStr(92, 0, "ACC   ");
-        u8g2.drawStr(92, 8, "      ");
+        sprintf(disp_buf,  "GEN OCT UNDER: %d", sspc.getOctUnder());
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 9:
+        sprintf(disp_buf,  "GEN OCT UPPER: %d", sspc.getOctUpper());
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 10:
+        sprintf(disp_buf,  "GEN GATE MIN : %d", sspc.getGateMin());
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 11:
+        sprintf(disp_buf,  "GEN GATE MAX : %d", sspc.getGateMax());
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 12:
+        sprintf(disp_buf,  "GEN GATE INI : %d", sspc.getGateInitial());
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 13:
+        sprintf(disp_buf,  "BPM : %d", sspc.getBPM());
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 14:
+        sprintf(disp_buf,  "SCALE : %s", scaleNames[sspc.getScale()]);
+        u8g2.drawStr(0, 0, disp_buf);
+        break;
+    case 15:
+        sprintf(disp_buf,  "PPQ : %d", sspc.getPPQ());
+        u8g2.drawStr(0, 0, disp_buf);
         break;
     default:
         break;
     }
 
+    u8g2.setFont(u8g2_font_5x8_tf);
     sspc.updateDisplay();
 
     u8g2.sendBuffer();
@@ -208,13 +197,12 @@ void setup()
 
     analogReadResolution(12);
 
-    enc[0].init(ENC0A, ENC0B);
-    enc[1].init(ENC1A, ENC1B);
     pot[0].init(POT0);
     pot[1].init(POT1);
+    enc[0].init(ENC0A, ENC0B);
+    enc[1].init(ENC1A, ENC1B);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
-
     pinMode(GATE_A, OUTPUT);
     // pinMode(GATE_B, OUTPUT);
 
@@ -239,74 +227,93 @@ void setup()
 
 void loop()
 {
+    uint16_t pot0 = pot[0].analogReadDropLow4bit();
+    uint16_t pot1 = pot[1].analogReadDropLow4bit();
     int8_t enc0 = enc[0].getDirection(true);
     int8_t enc1 = enc[1].getDirection(true);
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
-    uint16_t pot0 = pot[0].analogRead(false);
-    uint16_t pot1 = pot[1].analogRead(false);
 
-    menuIndex = map(pot0, 0, 4040, 0, 8);
+    int menu = constrainCyclic(menuIndex + enc0, 0, MENU_MAX - 1);
+    requiresUpdate |= menuIndex != menu ? 1 : 0;
+    menuIndex = menu;
 
-    switch (menuIndex)
+    uint8_t step = map(pot0, 0, 4095, 0, 15);
+    sspc.setSettingPos(step);
+
+    if (btn0 == 1)
     {
-    case 0:
-        sspc.addPPQ(enc0);
-        break;
-    case 1:
-        sspc.addBPM(enc0);
-        sspc.addScale(enc1);
-        break;
-    case 2:
-        if (enc0 >= 1)
-        {
-            sspc.start();
-        }
-        else if (enc0 < 0)
+        if (sspc.isStart())
         {
             sspc.stop();
             sspc.reset();
         }
-        break;
-    case 3:
-        sspc.addGateLen(enc0);
-        sspc.addOctave(enc1);
-        if (btn0 == 2)
+        else
+        {
+            sspc.start();
+        }
+    }
+
+    switch (menuIndex)
+    {
+    case 0:
+        if (enc1 == 1)
         {
             sspc.requestGenerateSequence();
         }
-        if (btn1 == 2)
+        else if (enc1 == -1)
         {
             sspc.resetAllSequence();
         }
         break;
+    case 1:
+        sspc.addGateLen(enc1);
+        break;
+    case 2:
+        sspc.addOctave(enc1);
+        break;
+    case 3:
+        sspc.moveSeq(enc1);
+        break;
     case 4:
-        sspc.addOctUnder(enc0);
-        sspc.addOctUpper(enc1);
-        break;
-    case 5:
-        sspc.addGateMin(enc0);
-        sspc.addGateMax(enc1);
-        break;
-    case 6:
-        sspc.addGateInitial(enc0);
-        break;
-    case 7:
-        sspc.moveSeq(enc0);
         sspc.addGateKeyEnd(enc1, enc1);
         break;
-    case 8:
-    {
-        uint8_t step = map(pot1, 0, 4040, 0, 15);
-        sspc.setSettingPos(step);
-        sspc.addNote(enc0);
+    case 5:
+        sspc.addNote(enc1);
+        break;
+    case 6:
         sspc.addGate(enc1);
-        if (btn0 == 2)
+        break;
+    case 7:
+        if (enc1 == 1)
         {
             sspc.toggleAcc();
         }
-    }
-    break;
+        break;
+    case 8:
+        sspc.addOctUnder(enc1);
+        break;
+    case 9:
+        sspc.addOctUpper(enc1);
+        break;
+    case 10:
+        sspc.addGateMin(enc1);
+        break;
+    case 11:
+        sspc.addGateMax(enc1);
+        break;
+    case 12:
+        sspc.addGateInitial(enc1);
+        break;
+    case 13:
+        sspc.addBPM(enc1);
+        break;
+    case 14:
+        sspc.addScale(enc1);
+        break;
+    case 15:
+        sspc.addPPQ(enc1);
+        break;
     default:
         break;
     }
