@@ -47,6 +47,7 @@ static StepSeqPlayControl sspc(&u8g2);
 #define MENU_MAX (16)
 static int8_t menuIndex = 0;
 static uint8_t requiresUpdate = 1;
+PollingTimeEvent updateOLED;
 
 static uint interruptSliceNum;
 
@@ -75,7 +76,8 @@ void dispOLED()
 {
     static char disp_buf[10] = {0};
 
-    u8g2.clearBuffer();
+    if (requiresUpdate)
+        u8g2.clearBuffer();
 
     u8g2.setFont(u8g2_font_7x14B_tf);
     switch (menuIndex)
@@ -145,7 +147,10 @@ void dispOLED()
     u8g2.setFont(u8g2_font_5x8_tf);
     sspc.updateDisplay();
 
-    u8g2.sendBuffer();
+    if (requiresUpdate)
+        u8g2.sendBuffer();
+    else
+        u8g2.updateDisplay();
 }
 
 void interruptPWM()
@@ -234,7 +239,7 @@ void loop()
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
 
-    int menu = constrainCyclic(menuIndex + enc0, 0, MENU_MAX - 1);
+    int menu = constrain(menuIndex + enc0, 0, MENU_MAX - 1);
     requiresUpdate |= menuIndex != menu ? 1 : 0;
     menuIndex = menu;
 
@@ -324,10 +329,17 @@ void loop()
 void setup1()
 {
     initOLED();
+    updateOLED.setMills(33);
+    updateOLED.start();
 }
 
 void loop1()
 {
+    if (!updateOLED.ready())
+    {
+        sleep_ms(1);
+        return;
+    }
+
     dispOLED();
-    sleep_ms(33);
 }

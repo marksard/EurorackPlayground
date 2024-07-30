@@ -351,12 +351,12 @@ public:
         }
     }
 
-    void updateProcedure()
+    int8_t updateProcedure()
     {
         if (!_pTrigger->ready())
         {
             updateGateOut(false);
-            return;
+            return 0;
         }
 
         if (_seqReadyCount >= _seqReadyCountMax)
@@ -392,6 +392,8 @@ public:
         }
 
         _seqReadyCount++;
+
+        return 1;
     }
 
     void updateDisplay()
