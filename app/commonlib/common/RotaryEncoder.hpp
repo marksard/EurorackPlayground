@@ -8,7 +8,7 @@
 #pragma once
 
 #define RE_DELTA_THRESHOLD_COUNT 5
-static const byte _thresholds[RE_DELTA_THRESHOLD_COUNT] = {10, 20, 40, 60, 80};
+static const uint16_t _thresholds[RE_DELTA_THRESHOLD_COUNT] = {1000, 5000, 10000, 20000, 40000};
 static const byte _deltas[RE_DELTA_THRESHOLD_COUNT] = {12, 6, 3, 2, 1};
 
 class RotaryEncoder
@@ -23,7 +23,7 @@ public:
     /// @brief ピン設定
     /// @param pin1
     /// @param pin2
-    void init(int pin1, int pin2)
+    void init(int pin1, int pin2, bool holdMode = false)
     {
         _pin1 = pin1;
         _pin2 = pin2;
@@ -33,6 +33,7 @@ public:
 
         _timePrev = millis();
         _timeCurrent = _timePrev;
+        _holdMode = holdMode;
 
         getDirection(); // 空読みして値をいれておく
     }
@@ -51,19 +52,23 @@ public:
         {
         case 0xd:
             _timePrev = _timeCurrent;
-            _timeCurrent = millis();
+            _timeCurrent = micros();
             _index = 0;
-            if (withoutAcc) return 1;
-            return getDelta();
+            _value = withoutAcc ? 1 : getDelta();
+            break;
         case 0x7:
             _timePrev = _timeCurrent;
-            _timeCurrent = millis();
+            _timeCurrent = micros();
             _index = 0;
-            if (withoutAcc) return -1;
-            return getDelta() * -1;
+            _value = withoutAcc ? -1 : getDelta() * -1;
+            break;
         default:
-            return 0;
+            if (!_holdMode)
+                _value = 0;
+            break;
         }
+
+        return _value;
     }
 
     ulong lastRotationTime()
@@ -84,12 +89,22 @@ public:
         return 1;
     }
 
+    byte getValue()
+    {
+        byte result = _value;
+        if (_holdMode)
+            _value = 0;
+        return result;
+    }
+
 protected:
     byte _pin1;
     byte _pin2;
     byte _index;
     ulong _timePrev;
     ulong _timeCurrent;
+    byte _value;
+    bool _holdMode;
 
     virtual void getPinValue(byte *pValue1, byte *pValue2)
     {
@@ -99,6 +114,7 @@ protected:
 
     inline byte readPin(int pin)
     {
-        return digitalRead(pin);
+        // return digitalRead(pin);
+        return gpio_get(pin);
     }
 };
