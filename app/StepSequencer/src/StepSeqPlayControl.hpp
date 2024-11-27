@@ -28,7 +28,6 @@ class TriggerOutPWM : public TriggerOut
 public:
     TriggerOutPWM() : TriggerOut() {}
     TriggerOutPWM(uint8_t pin) : TriggerOut(pin) {}
-    TriggerOutPWM(uint8_t pin, bool initPin) : TriggerOut(pin, initPin) {}
 
 protected:
     /// @brief ピン値読込
@@ -324,11 +323,11 @@ public:
         {
             int length = _pTrigger->getMills() * _seqReadyCountMax;
             int duration = _ssm.getGateDulation();
-            length = map(duration, 0, 100, 0, length);
-            _gateOut.setDuration(length);
-            _accOut.update(_ssm.getPlayAcc() != 0);
             _syncOut.setDuration(length >> 2);
             _syncOut.update(1);
+                length = map(duration, 0, 100, 0, length);
+            _gateOut.setDuration(length);
+            _accOut.update(_ssm.getPlayAcc() != 0);
         }
         else
         {
