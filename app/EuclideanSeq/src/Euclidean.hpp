@@ -20,10 +20,11 @@
 
 #include <Arduino.h>
 
-#define EUCLID_MAX_STEPS 16
-
 class Euclidean
 {
+public:
+    const static uint8_t EUCLID_MAX_STEPS = 16;
+
 public:
     Euclidean()
     {
