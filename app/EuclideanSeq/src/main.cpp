@@ -14,8 +14,8 @@
 #include "../../commonlib/common/EdgeChecker.hpp"
 #include "../../commonlib/common/TriggerOut.hpp"
 #include "../../commonlib/common/PollingTimeEvent.hpp"
-#include "Euclidean.hpp"
-#include "EuclideanDisp.hpp"
+#include "../../commonlib/common/Euclidean.hpp"
+#include "../../commonlib/ui_common/EuclideanDisp.hpp"
 #include "OscilloscopeLite.hpp"
 #include "Oscillator.hpp"
 #include "gpio.h"
@@ -89,6 +89,18 @@ static const uint8_t scales[MAX_SCALES][MAX_SCALE_KEY] =
 };
 static float voltPerTone = 4095.0 / 12.0 / 5.0;
 
+bool updateEncWhenGenerate(Euclidean *pEuclid, int8_t enc0, int8_t enc1)
+{
+    uint8_t onsets = constrain(pEuclid->getOnsets() + enc0, 0, pEuclid->getStepSize());
+    uint8_t stepSize = constrain(pEuclid->getStepSize() + enc1, pEuclid->getOnsets(), Euclidean::EUCLID_MAX_STEPS);
+    if (pEuclid->getOnsets() == onsets && pEuclid->getStepSize() == stepSize)
+    {
+        return false;
+    }
+    pEuclid->generate(onsets, stepSize);
+    return true;
+}
+
 void initOLED()
 {
     u8g2.begin();
@@ -112,8 +124,8 @@ void dispOLED()
                 menuIndex == 1 ? '*' : ' ',
                 euclid[1].getOnsets(), euclid[1].getStepSize());
         u8g2.drawStr(0, 2, disp_buf[0]);
-        euclidDisp[0].drawCircle(&u8g2, euclid[0].getStepSize(), euclid[0].getCurrent(), euclid[0].getSteps());
-        euclidDisp[1].drawCircle(&u8g2, euclid[1].getStepSize(), euclid[1].getCurrent(), euclid[1].getSteps());
+        euclidDisp[0].drawCircle(&u8g2, euclid[0].getStepSize(), euclid[0].getStartPos(), euclid[0].getCurrent(), euclid[0].getSteps());
+        euclidDisp[1].drawCircle(&u8g2, euclid[1].getStepSize(), euclid[1].getStartPos(), euclid[1].getCurrent(), euclid[1].getSteps());
         u8g2.sendBuffer();
     }
     else if (menuIndex >= 2 && menuIndex < 7)
@@ -379,14 +391,14 @@ void loop()
 
     if (menuIndex == 0)
     {
-        if (euclid[0].updateEncWhenGenerate(enc0, enc1))
+        if (updateEncWhenGenerate(&euclid[0], enc0, enc1))
         {
             euclidDisp[0].generateCircle(euclid[0].getStepSize());
         }
     }
     else if (menuIndex == 1)
     {
-        if (euclid[1].updateEncWhenGenerate(enc0, enc1))
+        if (updateEncWhenGenerate(&euclid[1], enc0, enc1))
         {
             euclidDisp[1].generateCircle(euclid[1].getStepSize());
         }
