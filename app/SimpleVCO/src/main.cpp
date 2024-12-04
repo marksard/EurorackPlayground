@@ -19,23 +19,20 @@
 #define CPU_CLOCK 133000000.0 // 標準めいっぱい
 #define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
 
-#define INTR_PWM_RESO 1024
-#define PWM_RESO 2048 // 11bit
+#define INTR_PWM_RESO 512
+#define PWM_RESO 4096         // 11bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
+// #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO) // 結果的に1になる
+#define SAMPLE_FREQ ((CPU_CLOCK / INTR_PWM_RESO) / 4) // 73.2khz
+// #define SAMPLE_FREQ 88200
+
 #define VCO_MAX_COARSE_FREQ 330
-#define LFO_MAX_COARSE_FREQ 10
+#define LFO_MAX_COARSE_FREQ 66
 
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
 MCP4922 MCP(&SPI1);
-// pwm_set_clkdivの演算で結果的に3
-// SPI処理が重めのため3
-#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 3)
-#else
-// pwm_set_clkdivの演算で結果的に1
-// #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
-#define SAMPLE_FREQ 120000
 #endif
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
@@ -81,6 +78,7 @@ void initOLED()
 }
 
 static char modeDisp[2][4] = { "VCO", "LFO" };
+static char cvDisp[][4] = { "---", "WAV", "PHS" };
 void dispOLED()
 {
     static char disp_buf[33] = {0};
@@ -93,7 +91,7 @@ void dispOLED()
     {
     case 0:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "%s A cv:%d", modeDisp[userConfig.rangeMode], externalInMode);
+        sprintf(disp_buf, "%s A %s", modeDisp[userConfig.rangeMode], cvDisp[externalInMode]);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[0].getWave() == Oscillator::Wave::PH_RAMP)
         {
@@ -114,7 +112,7 @@ void dispOLED()
         break;
     case 1:
         u8g2.setFont(u8g2_font_VCR_OSD_tf);
-        sprintf(disp_buf, "%s B cv:%d", modeDisp[userConfig.rangeMode], externalInMode);
+        sprintf(disp_buf, "%s B %s", modeDisp[userConfig.rangeMode], cvDisp[externalInMode]);
         u8g2.drawStr(0, 0, disp_buf);
         if (osc[1].getWave() == Oscillator::Wave::PH_RAMP)
         {
@@ -275,12 +273,12 @@ void setup()
 
 void loop()
 {
-    int8_t enc0 = enc[0].getDirection(true);
-    int8_t enc1 = enc[1].getDirection(true);
+    int8_t enc0 = enc[0].getDirection();
+    int8_t enc1 = enc[1].getDirection();
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
-    uint16_t pot0 = pot[0].analogRead(true);
-    uint16_t pot1 = pot[1].analogRead(true);
+    uint16_t pot0 = pot[0].analogRead();
+    uint16_t pot1 = pot[1].analogRead();
 
     static float coarseA = EXP_CURVE((float)pot0, 2.0) * max_coarse_freq;
     static float coarseB = EXP_CURVE((float)pot0, 2.0) * max_coarse_freq;
