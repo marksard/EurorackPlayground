@@ -20,7 +20,7 @@ public:
     
     /// @brief ピン設定
     /// @param pin
-    void init(uint8_t pin, bool needWait = true)
+    void init(uint8_t pin, bool needWait = false)
     {
         _pin = pin;
         _pinState = 0;
