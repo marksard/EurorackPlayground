@@ -52,6 +52,7 @@ PollingTimeEvent updateOLED;
 static uint interruptSliceNum;
 
 static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc", "blu", "spa", "luo"};
+static const char *seqSyncModes[] = {"INT", "GATE"};
 
 template <typename vs = int8_t>
 vs constrainCyclic(vs value, vs min, vs max)
@@ -137,7 +138,7 @@ void dispOLED()
         u8g2.drawStr(0, 0, disp_buf);
         break;
     case 15:
-        sprintf(disp_buf,  "PPQ : %d", sspc.getPPQ());
+        sprintf(disp_buf,  "SYNC : %s", seqSyncModes[sspc.getClockMode()]);
         u8g2.drawStr(0, 0, disp_buf);
         break;
     default:
@@ -208,8 +209,6 @@ void setup()
     enc[1].init(ENC1A, ENC1B);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
-    pinMode(GATE_A, OUTPUT);
-    // pinMode(GATE_B, OUTPUT);
 
 #ifdef USE_MCP4922
     pinMode(PIN_SPI1_SS, OUTPUT);
@@ -222,7 +221,7 @@ void setup()
 #endif
 
     // sspc.generateTestToneSequence();
-    sspc.setClockMode(StepSeqPlayControl::CLOCK::INT);
+    sspc.setClockMode(StepSeqPlayControl::CLOCK::EXT);
     sspc.requestResetAllSequence();
     sspc.setBPM(133, 48);
     sspc.start();
@@ -317,7 +316,7 @@ void loop()
         sspc.addScale(enc1);
         break;
     case 15:
-        sspc.addPPQ(enc1);
+        sspc.setClockMode((StepSeqPlayControl::CLOCK)constrain(sspc.getClockMode() + enc1, 0, (int)StepSeqPlayControl::CLOCK::EXT));
         break;
     default:
         break;
