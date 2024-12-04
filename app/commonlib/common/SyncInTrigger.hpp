@@ -14,10 +14,11 @@
 class SyncInTrigger : public TriggerInterface
 {
 public:
-    SyncInTrigger(byte pin)
+    SyncInTrigger(byte pin, ulong aliveTimeMillis = 2000)
         : SyncInTrigger()
     {
-        setPin(pin);
+        _edge.init(pin, aliveTimeMillis);
+        _bpmReso = 4;
     }
 
     SyncInTrigger()
@@ -48,13 +49,18 @@ public:
         return _start ? true : false;
     }
 
+    bool isAlive()
+    {
+        return _edge.isAlive();
+    }
+
     void setMills(int millSec) override {}
     int getMills() override { return _edge.getDurationMills(); }
 
     bool setBPM(byte bpm, byte bpmReso) override
     {
         _bpmReso = bpmReso;
-        return true;
+        return false;
     }
     bool setBPM(byte bpm) override { return true; }
     byte getBPM() override { return _edge.getBPM(_bpmReso); }

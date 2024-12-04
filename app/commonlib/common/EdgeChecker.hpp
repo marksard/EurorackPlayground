@@ -13,15 +13,16 @@ class EdgeChecker
 {
 public:
     EdgeChecker() {}
-    EdgeChecker(uint8_t pin)
+    EdgeChecker(uint8_t pin, ulong aliveTimeMillis = 1000)
     {
-        init(pin);
+        init(pin, aliveTimeMillis);
     }
     
     /// @brief ピン設定
     /// @param pin
-    void init(uint8_t pin)
+    void init(uint8_t pin, ulong aliveTimeMillis = 1000)
     {
+        _aliveTimeMicros = aliveTimeMillis * 1000;
         setPin(pin);
         // 空読み
         for(int i = 0; i < 8; ++i)
@@ -48,13 +49,13 @@ public:
 
     /// @brief 立下がりエッジ検出
     /// @return 
-    inline bool isEdgeLow()
-    {
-        uint8_t value = readPin();
-        bool edge = value == 0 && _lastValue != 0 ? true : false;
-        _lastValue = value;
-        return edge;
-    }
+    // inline bool isEdgeLow()
+    // {
+    //     uint8_t value = readPin();
+    //     bool edge = value == 0 && _lastValue != 0 ? true : false;
+    //     _lastValue = value;
+    //     return edge;
+    // }
 
     inline uint16_t getBPM(byte bpmReso = 4)
     {
@@ -79,11 +80,17 @@ public:
         pinMode(pin, INPUT);
     }
 
+    inline bool isAlive()
+    {
+        return micros() < (_lastMicros + _aliveTimeMicros);
+    }
+
 protected:
     uint8_t _pin;
     uint8_t _lastValue;
-    long _lastMicros;
+    ulong _lastMicros;
     int _duration;
+    ulong _aliveTimeMicros;
 
     /// @brief ピン値読込
     /// @return
