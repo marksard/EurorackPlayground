@@ -20,7 +20,7 @@ public:
     
     /// @brief ピン設定
     /// @param pin
-    void init(uint8_t pin, bool needWait = false)
+    void init(uint8_t pin, bool needWait = true)
     {
         _pin = pin;
         _pinState = 0;
@@ -40,6 +40,7 @@ public:
         }
 
         _needWait = needWait;
+        _lockfreeTime = 10 * 1000 * 1000;
     }
 
     /// @brief ボタン状態を取得
@@ -47,8 +48,14 @@ public:
     inline uint8_t getState()
     {
         uint8_t value = readPin();
-        if (_needWait && micros() < _leadLastMicros + 1000)
+        ulong micro = micros();
+        if (_needWait && micro < _leadLastMicros + 1000)
         {
+            if (micro < _leadLastMicros + _lockfreeTime)
+            {
+                _leadLastMicros = micros();
+            }
+
             return _lastResult;
         }
         _leadLastMicros = micros();
@@ -110,6 +117,8 @@ public:
         _holdTime = mills * 1000;
     }
 
+    uint8_t getValue() { return _lastResult; }
+
 protected:
     uint8_t _pin;
     uint8_t _pinState;
@@ -117,6 +126,7 @@ protected:
     ulong _lastMicros;
     ulong _holdTime;
     ulong _leadLastMicros;
+    ulong _lockfreeTime;
     uint8_t _lastResult;
     bool _needWait;
 
