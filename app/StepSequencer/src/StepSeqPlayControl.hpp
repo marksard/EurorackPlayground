@@ -499,7 +499,7 @@ public:
         _ssm.gateStep.setMode(Step::Mode::Forward);
         _ssm.keyStep.resetPlayStep();
         _ssm.gateStep.resetPlayStep();
-        _ssm.printSeq();
+        // _ssm.printSeq();
     }
 
 private:

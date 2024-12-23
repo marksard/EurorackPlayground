@@ -11,32 +11,29 @@
 #include "../../commonlib/common/Button.hpp"
 #include "../../commonlib/common/SmoothAnalogRead.hpp"
 #include "../../commonlib/common/RotaryEncoder.hpp"
+#include "../../commonlib/common/pwm_wrapper.h"
 #include "gpio.h"
 #include "StepSeqModel.hpp"
 #include "StepSeqView.hpp"
 #include "StepSeqPlayControl.hpp"
 
-#define CPU_CLOCK 125000000.0
-// #define CPU_CLOCK 133000000.0 // 標準めいっぱい
+#define CPU_CLOCK 133000000.0
 #define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
 
-#define INTR_PWM_RESO 1024
-#define PWM_RESO 4096 // 11bit
+#define INTR_PWM_RESO 512
+#define PWM_RESO 4096         // 12bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
-#define VCO_MAX_COARSE_FREQ 330
-#define LFO_MAX_COARSE_FREQ 10
+// #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO) // 結果的に1になる
+#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 20)
+static uint interruptSliceNum;
 
 #ifdef USE_MCP4922
 #include "MCP_DAC.h"
 MCP4922 MCP(&SPI1);
-#define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO / 20)
-#else
-// pwm_set_clkdivの演算で結果的に1
-// #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO)
-#define SAMPLE_FREQ 16000
 #endif
 
+// 標準インターフェース
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 static SmoothAnalogRead pot[2];
 static RotaryEncoder enc[2];
@@ -44,25 +41,15 @@ static Button buttons[2];
 
 static StepSeqPlayControl sspc(&u8g2);
 
+// 画面周り
 #define MENU_MAX (16)
 static int8_t menuIndex = 0;
 static uint8_t requiresUpdate = 1;
 PollingTimeEvent updateOLED;
 
-static uint interruptSliceNum;
 
 static const char *scaleNames[] = {"maj", "dor", "phr", "lyd", "mix", "min", "loc", "blu", "spa", "luo"};
 static const char *seqSyncModes[] = {"INT", "GATE"};
-
-template <typename vs = int8_t>
-vs constrainCyclic(vs value, vs min, vs max)
-{
-    if (value > max)
-        return min;
-    if (value < min)
-        return max;
-    return value;
-}
 
 void initOLED()
 {
@@ -70,7 +57,6 @@ void initOLED()
     u8g2.setContrast(40);
     u8g2.setFontPosTop();
     u8g2.setDrawColor(2);
-    //   u8g2.setFlipMode(1);
 }
 
 void dispOLED()
@@ -164,35 +150,6 @@ void interruptPWM()
     // gpio_put(GATE_A, LOW);
 }
 
-// OUT_A/Bとは違うPWMチャンネルのPWM割り込みにすること
-void initPWMIntr(uint gpio)
-{
-    gpio_set_function(gpio, GPIO_FUNC_PWM);
-    uint slice = pwm_gpio_to_slice_num(gpio);
-
-    interruptSliceNum = slice;
-    pwm_clear_irq(slice);
-    pwm_set_irq_enabled(slice, true);
-    irq_set_exclusive_handler(PWM_IRQ_WRAP, interruptPWM);
-    irq_set_enabled(PWM_IRQ_WRAP, true);
-
-    // 割り込み頻度
-    pwm_set_wrap(slice, INTR_PWM_RESO - 1);
-    pwm_set_enabled(slice, true);
-    // clockdiv = 125MHz / (INTR_PWM_RESO * 欲しいfreq)
-    pwm_set_clkdiv(slice, CPU_CLOCK / (INTR_PWM_RESO * SAMPLE_FREQ));
-}
-
-void initPWM(uint gpio)
-{
-    gpio_set_function(gpio, GPIO_FUNC_PWM);
-    uint slice = pwm_gpio_to_slice_num(gpio);
-    pwm_set_wrap(slice, PWM_RESO - 1);
-    pwm_set_enabled(slice, true);
-    // 最速にして滑らかなPWMを得る
-    pwm_set_clkdiv(slice, 1);
-}
-
 void setup()
 {
     // Serial.begin(9600);
@@ -205,8 +162,8 @@ void setup()
 
     pot[0].init(POT0);
     pot[1].init(POT1);
-    enc[0].init(ENC0A, ENC0B);
-    enc[1].init(ENC1A, ENC1B);
+    enc[0].init(ENC0A, ENC0B, true);
+    enc[1].init(ENC1A, ENC1B, true);
     buttons[0].init(SW0);
     buttons[1].init(SW1);
 
@@ -216,25 +173,41 @@ void setup()
     // SPI1.begin(); // MCP_DAC 0.5.0 breaking change stop call spi.begin()
     MCP.begin(PIN_SPI1_SS);
 #else
-    initPWM(OUT_A);
-    initPWM(OUT_B);
+    initPWM(OUT_A, PWM_RESO);
+    initPWM(OUT_B, PWM_RESO);
 #endif
 
-    // sspc.generateTestToneSequence();
     sspc.setClockMode(StepSeqPlayControl::CLOCK::EXT);
     sspc.requestResetAllSequence();
     sspc.setBPM(133, 48);
     sspc.start();
 
-    initPWMIntr(PWM_INTR_PIN);
+    initPWMIntr(PWM_INTR_PIN, interruptPWM, &interruptSliceNum, SAMPLE_FREQ, INTR_PWM_RESO, CPU_CLOCK);
 }
 
 void loop()
 {
-    uint16_t pot0 = pot[0].analogReadDropLow4bit();
-    uint16_t pot1 = pot[1].analogReadDropLow4bit();
-    int8_t enc0 = enc[0].getDirection(true);
-    int8_t enc1 = enc[1].getDirection(true);
+    pot[0].analogReadDropLow4bit();
+    pot[1].analogReadDropLow4bit();
+    enc[0].getDirection();
+    enc[1].getDirection();
+
+    sleep_us(1000);
+}
+
+void setup1()
+{
+    initOLED();
+    updateOLED.setMills(33);
+    updateOLED.start();
+}
+
+void loop1()
+{
+    uint16_t pot0 = pot[0].getValue();
+    uint16_t pot1 = pot[1].getValue();
+    int8_t enc0 = enc[0].getValue();
+    int8_t enc1 = enc[1].getValue();
     uint8_t btn0 = buttons[0].getState();
     uint8_t btn1 = buttons[1].getState();
 
@@ -322,18 +295,6 @@ void loop()
         break;
     }
 
-    sleep_ms(1);
-}
-
-void setup1()
-{
-    initOLED();
-    updateOLED.setMills(33);
-    updateOLED.start();
-}
-
-void loop1()
-{
     if (!updateOLED.ready())
     {
         sleep_ms(1);
