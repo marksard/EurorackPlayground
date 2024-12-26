@@ -21,7 +21,7 @@
 #define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
 
 #define INTR_PWM_RESO 512
-#define PWM_RESO 1024         // 11bit
+#define PWM_RESO 1024         // 10bit
 #define DAC_MAX_MILLVOLT 5000 // mV
 #define ADC_RESO 4096
 // #define SAMPLE_FREQ (CPU_CLOCK / INTR_PWM_RESO) // 結果的に1になる
@@ -120,6 +120,15 @@ void dispOLED()
         sprintf(disp_buf, "BIAS: %s", userConfig.biasMode ? "UNI": "BI");
         u8g2.drawStr(0, 32, disp_buf);
         break;
+    case 2:
+        u8g2.setFont(u8g2_font_profont22_tf);
+        sprintf(disp_buf, "SETTINGS 2");
+        u8g2.drawStr(0, 0, disp_buf);
+        sprintf(disp_buf, "ROOT: %s", userConfig.rootMinus ? "-12": "NRM");
+        u8g2.drawStr(0, 16, disp_buf);
+        sprintf(disp_buf, "7TH: %s", userConfig.seventhMinus ? "-12": "NRM");
+        u8g2.drawStr(0, 32, disp_buf);
+        break;
     }
 
     if (saveConfirm)
@@ -140,14 +149,28 @@ void dispOLED()
 void interruptPWM()
 {
     pwm_clear_irq(interruptSliceNum);
-    uint32_t values[4] = {0};
     // gpio_put(GATE_A, HIGH);
-    values[0] = osc[0].getWaveValue();
-    values[1] = osc[1].getWaveValue();
-    values[2] = osc[2].getWaveValue();
-    values[3] = osc[3].getWaveValue();
-    uint32_t value = (values[0] + values[1] + values[2] + values[3]) >> 2;
+
+    // uint32_t values[4] = {0};
+    // values[0] = osc[0].getWaveValue();
+    // values[1] = osc[1].getWaveValue();
+    // values[2] = osc[2].getWaveValue();
+    // values[3] = osc[3].getWaveValue();
+    // uint32_t value = (values[0] + values[1] + values[2] + values[3]) >> 2;
+    // value *= (osc[0].getWave() == Oscillator::Wave::SQU) ? 0.9 : 1.2;
+
+    uint16_t sum = 0;
+    uint16_t values[4] = {0};
+    for (int i = 0; i < 4; ++i)
+    {
+        values[i] = osc[i].getWaveValue();
+        sum += values[i];
+    }
+
+    // 平均してSQU以外は少しゲインを持ち上げる
+    uint16_t value = sum >> 2;
     value *= (osc[0].getWave() == Oscillator::Wave::SQU) ? 0.9 : 1.2;
+
 #ifdef USE_MCP4922
     MCP.fastWriteA(valueA);
     MCP.fastWriteB(valueB);
@@ -305,10 +328,10 @@ void loop()
     uint8_t rootDiff = (freqIndex - courceIndex) % 12;
     uint8_t scaleIndex = routeScaleIndexFromSemitone[rootDiff];
 
-    osc[0].setFrequencyFromNoteNameIndex(freqIndex + addRootScale[scaleIndex][0]);
+    osc[0].setFrequencyFromNoteNameIndex(freqIndex + addRootScale[scaleIndex][0] - (userConfig.rootMinus ? 12 : 0));
     osc[1].setFrequencyFromNoteNameIndex(freqIndex + addRootScale[scaleIndex][1]);
     osc[2].setFrequencyFromNoteNameIndex(freqIndex + addRootScale[scaleIndex][2]);
-    osc[3].setFrequencyFromNoteNameIndex(freqIndex + addRootScale[scaleIndex][3]);
+    osc[3].setFrequencyFromNoteNameIndex(freqIndex + addRootScale[scaleIndex][3] - (userConfig.seventhMinus ? 12 : 0));
 
     if (freqIndex != freqIndexOld)
     {
@@ -400,6 +423,16 @@ void loop()
 #endif
     }
     break;
+    case 2:
+    {
+        uint8_t rootMinus = constrain(userConfig.rootMinus + (int)enc0, 0, 1);
+        requiresUpdate |= rootMinus != userConfig.rootMinus;
+        userConfig.rootMinus = rootMinus;
+        uint8_t seventhMinus = constrain(userConfig.seventhMinus + (int)enc1, 0, 1);
+        requiresUpdate |= seventhMinus != userConfig.seventhMinus;
+        userConfig.seventhMinus = seventhMinus;
+    }
+    break;
     }
 
     if (btn1 == 4)
@@ -426,22 +459,19 @@ void loop()
     // dispCount++;
     // if (dispCount == 0)
     // {
-    //     Serial.print(externalIn);
+    //     Serial.print(coarse);
     //     Serial.print(", ");
-    //     Serial.print(voct);
+    //     Serial.print(freq);
     //     Serial.print(", ");
-    //     Serial.print(userConfig.voctTune);
+    //     Serial.print(powVOct);
     //     Serial.print(", ");
-    //     Serial.print(coarseA);
-    //     Serial.print(", ");
-    //     Serial.print(freqencyA);
-    //     Serial.print(", ");
-    //     Serial.print(osc[0].getWaveName());
+    //     Serial.print(osc[0].getNoteNameOrFreq(false));
     //     Serial.print(", ");
     //     Serial.println();
     // }
 
-    sleep_us(50); // 20kHz
+    sleep_us(1000); // 1kHz
+    // sleep_us(50); // 20kHz
 }
 
 void setup1()

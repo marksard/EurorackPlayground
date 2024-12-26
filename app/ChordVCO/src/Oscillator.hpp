@@ -13,20 +13,23 @@
 #define WAVE_LENGTH 4096
 #define WAVE_LENGTH_BIT 12
 
-// #ifdef bit_11
-// // #include "wavetable/sine_11bit_4096.h"
-// #define WAVE_INDEX_DIV_BIT 1 // WAVE_LENGTH_BIT - WAVE_HEIGHT
-// #define WAVE_HEIGHT 2048
-// #else
-// // #include "wavetable/sine_12bit_4096.h"
-// #define WAVE_INDEX_DIV_BIT 0 // WAVE_LENGTH_BIT - WAVE_HEIGHT
-// #define WAVE_HEIGHT 4096
-// #endif
-
-// 10bit
+#define bit_10
+#ifdef bit_10
+// #include "wavetable/sine_10bit_4096.h"
 #define WAVE_INDEX_DIV_BIT 2 // WAVE_LENGTH_BIT - WAVE_HEIGHT
 #define WAVE_HEIGHT 1024
+#elif defined(bit_11)
+// #include "wavetable/sine_11bit_4096.h"
+#define WAVE_INDEX_DIV_BIT 1 // WAVE_LENGTH_BIT - WAVE_HEIGHT
+#define WAVE_HEIGHT 2048
+#else
+// #include "wavetable/sine_12bit_4096.h"
+#define WAVE_INDEX_DIV_BIT 0 // WAVE_LENGTH_BIT - WAVE_HEIGHT
+#define WAVE_HEIGHT 4096
+#endif
 
+#define WAVE_HEIGHT_BIT (WAVE_LENGTH_BIT - WAVE_INDEX_DIV_BIT)
+#define FOLD_TRI_MAX ((WAVE_HEIGHT >> 1) - (WAVE_HEIGHT >> 4))
 
 #define OSC_WAVE_BIT 32
 #define OSC_WAVE_BIT32 4294967296 // 2^32
@@ -89,12 +92,12 @@ public:
         MAX = TRI,
     };
     const char waveName[Wave::MAX + 1][9] = {" SQUARE ", "PHS-SAW", "MUL-TRI", "FOLD-TRI"};
-    // 上位12ビット(0~4095)をindex範囲にする
+    // Cycle length: 0-4095(12bit)
     const uint32_t indexBit = OSC_WAVE_BIT - WAVE_LENGTH_BIT;
 
 public:
     Oscillator()
-        : _phaseShift(0, 63, 0, 63), _folding(0, 420, 0, 420)
+        : _phaseShift(0, 63, 0, 63), _folding(0, FOLD_TRI_MAX, 0, FOLD_TRI_MAX)
     {
     }
 
@@ -115,9 +118,8 @@ public:
         _isFolding = false;
     }
 
-    // value範囲＝DAC、PWM出力範囲：0-4095(12bit)
-    // index範囲：0-4095(12bit)
-    // とした。sine以外は単純な演算のみで済む
+    // Wave height: Max PWM size
+    // Cycle length: 0-4095(12bit)
     uint16_t getWaveValue()
     {
         _phaseAccum = _phaseAccum + _tuningWordM;
@@ -137,7 +139,7 @@ public:
             {
                 value = getTriangle(index, indexHeight);
                 uint16_t value2 = getTriangle(index, indexPhase);
-                value = ((value * value2) >> 10) % WAVE_HEIGHT;
+                value = ((value * value2) >> WAVE_HEIGHT_BIT) % WAVE_HEIGHT;
             }
             break;
         case Wave::TRI:
@@ -221,8 +223,12 @@ public:
         return 0;
     }
 
-    void setFrequencyFromNoteNameIndex(uint8_t noteNameIndex)
+    void setFrequencyFromNoteNameIndex(int8_t noteNameIndex)
     {
+        if (noteNameIndex < 0)
+        {
+            noteNameIndex = 0;
+        }
         float frequency = noteFreq[noteNameIndex];
         setFrequency(frequency);
     }
@@ -291,8 +297,14 @@ private:
 
     uint16_t applyPhaseShift(uint16_t value, uint32_t indexHeight, uint32_t indexPhase)
     {
-        // Phase shift with normalize
-        return map(indexHeight + indexPhase, abs((long)indexHeight - (long)indexPhase) % _heightHalf, WAVE_HEIGHT, 0, _heightHalf);
+        // Phase shift with normalize. (Not exact, but light.)
+        uint16_t sum = indexHeight + indexPhase;
+        uint16_t diff = abs((long)indexHeight - (long)indexPhase) % _heightHalf;
+        return map(sum, 
+                    diff,
+                    WAVE_HEIGHT,
+                    0,
+                    _heightHalf);
     }
 
     // Light-weight Wavefolder

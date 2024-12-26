@@ -28,6 +28,8 @@ struct UserConfig
     int16_t oscPhaseShift;
     int16_t oscFolding;
     int8_t biasMode;
+    int8_t rootMinus;
+    int8_t seventhMinus;
 };
 
 int startUserConfigAddress = 0;
@@ -42,6 +44,8 @@ void initUserConfig(UserConfig *pUserConfig)
     pUserConfig->oscPhaseShift = 5;
     pUserConfig->oscFolding = 0;
     pUserConfig->biasMode = 0;
+    pUserConfig->rootMinus = 0;    
+    pUserConfig->seventhMinus = 0;    
 }
 
 void loadUserConfig(UserConfig *pUserConfig)
