@@ -16,7 +16,6 @@
 #include "Oscillator.hpp"
 #include "EepromData.h"
 
-// #define CPU_CLOCK 125000000.0
 #define CPU_CLOCK 133000000.0 // 標準めいっぱい
 #define SPI_CLOCK 20000000 * 2 // 20MHz上限なんだが24MHzあたりに張り付かせるためにこの数値をセット
 
@@ -49,7 +48,6 @@ static float max_coarse_freq = VCO_MAX_COARSE_FREQ;
 #define EXP_CURVE(value, ratio) (exp((value * (ratio / (ADC_RESO-1)))) - 1) / (exp(ratio) - 1)
 
 const static float foldRatio = (float)ADC_RESO / (float)100;
-const static float waveRatio = (float)ADC_RESO / (float)(Oscillator::Wave::MAX+1);
 static uint interruptSliceNum;
 
 Oscillator osc[4];
