@@ -149,14 +149,6 @@ void interruptPWM()
     pwm_clear_irq(interruptSliceNum);
     // gpio_put(GATE_A, HIGH);
 
-    // uint32_t values[4] = {0};
-    // values[0] = osc[0].getWaveValue();
-    // values[1] = osc[1].getWaveValue();
-    // values[2] = osc[2].getWaveValue();
-    // values[3] = osc[3].getWaveValue();
-    // uint32_t value = (values[0] + values[1] + values[2] + values[3]) >> 2;
-    // value *= (osc[0].getWave() == Oscillator::Wave::SQU) ? 0.9 : 1.2;
-
     uint16_t sum = 0;
     uint16_t values[4] = {0};
     for (int i = 0; i < 4; ++i)
@@ -166,8 +158,18 @@ void interruptPWM()
     }
 
     // 平均してSQU以外は少しゲインを持ち上げる
-    uint16_t value = sum >> 2;
-    value *= (osc[0].getWave() == Oscillator::Wave::SQU) ? 0.9 : 1.2;
+    int16_t value = sum * 0.25;
+    value -= 512;
+    if (osc[0].getWave() == Oscillator::Wave::SQU)
+    {
+        value *= 0.9;
+    }
+    else
+    {
+        value = value * 1.4;
+    }
+    value += 512;
+    value = constrain(value, 0, 1024);
 
 #ifdef USE_MCP4922
     MCP.fastWriteA(valueA);
