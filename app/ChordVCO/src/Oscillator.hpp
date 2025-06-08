@@ -3,33 +3,32 @@
  * Copyright 2023 marksard
  * This software is released under the MIT license.
  * see https://opensource.org/licenses/MIT
- */ 
+ */
 
 #pragma once
 #include <Arduino.h>
-#include <math.h>
 #include "note.h"
 
 #define WAVE_LENGTH 4096
 #define WAVE_LENGTH_BIT 12
 
-#define bit_10
+#define bit_12
 #ifdef bit_10
-// #include "wavetable/sine_10bit_4096.h"
+#include "wavetable/sine_10bit_4096.h"
 #define WAVE_INDEX_DIV_BIT 2 // WAVE_LENGTH_BIT - WAVE_HEIGHT
 #define WAVE_HEIGHT 1024
 #elif defined(bit_11)
-// #include "wavetable/sine_11bit_4096.h"
+#include "wavetable/sine_11bit_4096.h"
 #define WAVE_INDEX_DIV_BIT 1 // WAVE_LENGTH_BIT - WAVE_HEIGHT
 #define WAVE_HEIGHT 2048
 #else
-// #include "wavetable/sine_12bit_4096.h"
+#include "wavetable/sine_12bit_4096.h"
 #define WAVE_INDEX_DIV_BIT 0 // WAVE_LENGTH_BIT - WAVE_HEIGHT
 #define WAVE_HEIGHT 4096
 #endif
 
 #define WAVE_HEIGHT_BIT (WAVE_LENGTH_BIT - WAVE_INDEX_DIV_BIT)
-#define FOLD_TRI_MAX ((WAVE_HEIGHT >> 1) - (WAVE_HEIGHT >> 3))
+#define FOLD_TRI_MAX ((WAVE_HEIGHT >> 1) - (WAVE_HEIGHT >> 4))
 
 #define OSC_WAVE_BIT 32
 #define OSC_WAVE_BIT32 4294967296 // 2^32
@@ -89,10 +88,12 @@ public:
         SAW,
         MUL_TRI,
         TRI,
-        MAX = TRI,
+        SINE,
+        NOISE,
+        MAX = NOISE,
     };
-    const char waveName[Wave::MAX + 1][9] = {" SQUARE ", "PHS-SAW", "MUL-TRI", "FOLD-TRI"};
-    // Cycle length: 0-4095(12bit)
+    const char waveName[Wave::MAX + 1][9] = {" SQUARE ", "SAWWAVE ", "MUL-TRI", "TRIANGLE", "  SINE  ", "W-NOISE "};
+    // 上位12ビット(0~4095)をindex範囲にする
     const uint32_t indexBit = OSC_WAVE_BIT - WAVE_LENGTH_BIT;
 
 public:
@@ -106,20 +107,21 @@ public:
         _phaseAccum = 0;
         _tuningWordM = 0;
         _wave = Wave::SQU;
-        _noteNameIndex = 0;
+        _coarseNoteNameIndex = 0;
         _widthHalf = WAVE_LENGTH >> 1;
         _widthM1 = WAVE_LENGTH - 1;
         _heightHalf = WAVE_HEIGHT >> 1;
         _heightM1 = WAVE_HEIGHT - 1;
         _interruptClock = clock;
+        _coarse = 0;
         // _halfReso = _reso >> 1;
-        _coarse = 0.0;
         _lastValue = 0;
         _isFolding = false;
     }
 
-    // Wave height: Max PWM size
-    // Cycle length: 0-4095(12bit)
+    // value範囲＝DAC、PWM出力範囲：0-4095(12bit)
+    // index範囲：0-4095(12bit)
+    // とした。sine以外は単純な演算のみで済む
     uint16_t getWaveValue()
     {
         _phaseAccum = _phaseAccum + _tuningWordM;
@@ -147,13 +149,21 @@ public:
             if (_isFolding)
                 value = applyEzFolding(value);
             break;
+        case Wave::SINE:
+            value = sine_1xbit[index];
+            if (_isFolding)
+                value = applyEzFolding(value);
+            break;
+        case Wave::NOISE:
+            value = getRandom16(WAVE_HEIGHT);
+            break;
         default:
             value = 0;
             break;
         }
 
         // simplest linear interpolation
-        value = (_lastValue + value) >> 1;
+        // value = (_lastValue + value) >> 1;
         _lastValue = value;
         return value;
     }
@@ -161,8 +171,27 @@ public:
     void setFrequency(float frequency)
     {
         // チューニングワード値 = 2^N(ここでは32bitに設定) * 出力したい周波数 / クロック周波数
-        _tuningWordM = OSC_WAVE_BIT32 * ((float)frequency / _interruptClock);
+        _tuningWordM = OSC_WAVE_BIT32 * (frequency / _interruptClock);
     }
+
+    void setFrequencyFromNoteNameIndex(int8_t value)
+    {
+        value = constrain(value, 0, 127);
+        setFrequency(noteFreq[value]);
+    }
+
+    bool setWave(Wave value)
+    {
+        bool result = _wave != value;
+        if (value < 0 && value > Wave::MAX)
+            return false;
+        _wave = value;
+        return result;
+    }
+
+    Wave getWave() { return _wave; }
+
+    uint16_t getRandom16(uint16_t max) { return getRandomFast() % max; }
 
     void addPhaseShift(int8_t value)
     {
@@ -194,43 +223,40 @@ public:
 
     void startFolding(int8_t value) { _isFolding = value != 0 ? true : false; }
 
-    bool setNoteNameFromFrequency(float frequency)
+    bool setCourceFromNoteNameIndex(int8_t value)
     {
-        uint8_t noteNameIndex = 0;
-        for (int i = 127; i >= 0; --i)
+        bool result = _coarseNoteNameIndex != value;
+        if (value < 0)
         {
-            if (noteFreq[i] <= frequency)
-            {
-                noteNameIndex = i + 1;
-                break;
-            }
+            value = 0;
         }
-        bool result = _noteNameIndex != noteNameIndex;
-        _noteNameIndex = noteNameIndex;
+        _coarseNoteNameIndex = value;
+        _coarse = noteFreq[value];
         return result;
     }
 
-    uint8_t getNoteNameIndexFromFreq(float frequency)
-    {
-        for (int i = 127; i >= 0; --i)
-        {
-            if (noteFreq[i] <= frequency)
-            {
-                return i + 1;
+    float getCource() { return _coarse; }
+
+    inline uint8_t getNoteNameIndexFromFreq(float freq) {
+        // 指定した周波数に最も近い12平均律ノートのインデックスを返す関数
+        int nearestIndex = 0;
+        float minDiff = fabs(noteFreq[0] - freq);
+        for (int i = 1; i < sizeof(noteFreq)/sizeof(noteFreq[0]); ++i) {
+            float diff = fabs(noteFreq[i] - freq);
+            if (diff < minDiff) {
+                minDiff = diff;
+                nearestIndex = i;
             }
         }
-
-        return 0;
+        return nearestIndex;
     }
 
-    void setFrequencyFromNoteNameIndex(int8_t noteNameIndex)
+    bool setNoteNameFromFrequency(float frequency)
     {
-        if (noteNameIndex < 0)
-        {
-            noteNameIndex = 0;
-        }
-        float frequency = noteFreq[noteNameIndex];
-        setFrequency(frequency);
+        uint8_t noteNameIndex = getNoteNameIndexFromFreq(frequency);
+        bool result = _coarseNoteNameIndex != noteNameIndex;
+        _coarseNoteNameIndex = noteNameIndex;
+        return result;
     }
 
     bool setFreqName(float frequency)
@@ -243,19 +269,8 @@ public:
         }
         return result;
     }
-
-    bool setWave(Wave value)
-    {
-        bool result = _wave != value;
-        if (value < 0 && value > Wave::MAX)
-            return false;
-        _wave = value;
-        return result;
-    }
-
-    Wave getWave() { return _wave; }
     const char *getWaveName() { return waveName[_wave]; }
-    const char *getNoteName() { return noteName[_noteNameIndex]; }
+    const char *getNoteName() { return noteName[_coarseNoteNameIndex]; }
 
     const char *getNoteNameOrFreq(bool freqName = true)
     {
@@ -265,10 +280,8 @@ public:
             return _freqName;
         }
 
-        return noteName[_noteNameIndex];
+        return noteName[_coarseNoteNameIndex];
     }
-
-    uint16_t getRandom16(uint16_t max) { return getRandomFast() % max; }
 
 private:
     uint32_t _phaseAccum;
@@ -278,7 +291,7 @@ private:
     uint16_t _widthM1;
     uint32_t _heightHalf;
     uint32_t _heightM1;
-    uint8_t _noteNameIndex;
+    uint8_t _coarseNoteNameIndex;
     float _interruptClock;
     uint16_t _halfReso;
     LimitValue<int8_t> _phaseShift;
@@ -293,18 +306,18 @@ private:
     inline uint16_t getTriangle(uint32_t index, uint32_t indexHeight)
     {
         return index < _widthHalf ? (indexHeight << 1) : ((_heightM1 - indexHeight) << 1);
-    } 
+    }
 
-    uint16_t applyPhaseShift(uint16_t value, uint32_t indexHeight, uint32_t indexPhase)
+    inline uint16_t applyPhaseShift(uint16_t value, uint32_t indexHeight, uint32_t indexPhase)
     {
         // Phase shift with normalize. (Not exact, but light.)
         uint16_t sum = indexHeight + indexPhase;
         uint16_t diff = abs((long)indexHeight - (long)indexPhase) % _heightHalf;
-        return map(sum, 
-                    diff,
-                    WAVE_HEIGHT,
-                    0,
-                    _heightHalf);
+        return map(sum,
+                   diff,
+                   _heightM1,
+                   0,
+                   _heightHalf - 1);
     }
 
     // Light-weight Wavefolder
