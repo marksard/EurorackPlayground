@@ -17,14 +17,13 @@ public:
     {
         init(pin, aliveTimeMillis);
     }
-    
+
     /// @brief ピン設定
     /// @param pin
     void init(uint8_t pin, ulong aliveTimeMillis = 1000)
     {
-        _aliveTimeMicros = aliveTimeMillis * 1000;
-        pinMode(pin, INPUT);
         setPin(pin);
+        _aliveTimeMicros = aliveTimeMillis * 1000;
         // 空読み
         for(int i = 0; i < 8; ++i)
         {
@@ -32,31 +31,41 @@ public:
         }
     }
 
+    // /// @brief ピン設定
+    // /// @param pin
+    // void init(uint8_t pin, gpio_irq_callback_t callback, ulong aliveTimeMillis = 1000)
+    // {
+    //     setPin(pin);
+    //     _aliveTimeMicros = aliveTimeMillis * 1000;
+    //     gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_LEVEL_HIGH | GPIO_IRQ_EDGE_FALL, true, callback);
+    // }
+
+    /// @brief エッジ状態更新
+    /// @param value エッジ検出値
+    /// @return エッジ判定（立ち上がりON）
+    /// readPinを使わず割り込みなどで更新する
+    inline bool updateEdge(uint8_t value)
+    {
+        bool edge = 0;
+        if (value != 0 && _lastValue == 0)
+        {
+            ulong now = micros();
+            edge = true;
+            _duration = now - _lastMicros;
+            _lastMicros = now;
+        }
+        _lastValue = value;
+        _lastEdge = edge;
+        return edge;
+    }
+
     /// @brief 立上がりエッジ検出
     /// @return 
     inline bool isEdgeHigh()
     {
         uint8_t value = readPin();
-        bool edge = 0;
-        if (value != 0 && _lastValue == 0)
-        {
-            edge = true;
-            _duration = micros() - _lastMicros;
-            _lastMicros = micros();
-        }
-        _lastValue = value;
-        return edge;
+        return updateEdge(value);
     }
-
-    /// @brief 立下がりエッジ検出
-    /// @return 
-    // inline bool isEdgeLow()
-    // {
-    //     uint8_t value = readPin();
-    //     bool edge = value == 0 && _lastValue != 0 ? true : false;
-    //     _lastValue = value;
-    //     return edge;
-    // }
 
     inline uint16_t getBPM(byte bpmReso = 4)
     {
@@ -74,6 +83,7 @@ public:
     }
 
     inline bool getValue() { return _lastValue; }
+    inline bool getEdge() { return _lastEdge; }
 
     inline void setPin(byte pin)
     {
@@ -83,12 +93,14 @@ public:
 
     inline bool isAlive()
     {
-        return micros() < (_lastMicros + _aliveTimeMicros);
+        // return micros() < (_lastMicros + _aliveTimeMicros);
+        return (micros() - _lastMicros) < _aliveTimeMicros;
     }
 
 protected:
     uint8_t _pin;
     uint8_t _lastValue;
+    bool _lastEdge;
     ulong _lastMicros;
     int _duration;
     ulong _aliveTimeMicros;
@@ -98,6 +110,5 @@ protected:
     virtual uint8_t readPin()
     {
         return gpio_get(_pin);
-        // return digitalRead(_pin);
     }
 };

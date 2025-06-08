@@ -20,7 +20,7 @@ public:
     
     /// @brief ピン設定
     /// @param pin
-    void init(uint8_t pin, bool needWait = true)
+    void init(uint8_t pin, bool needWait = true, bool pullup = true, bool invert = false)
     {
         _pin = pin;
         _pinState = 0;
@@ -29,8 +29,9 @@ public:
         _lastMicros = 0;
         _leadLastMicros = 0;
         _lastResult = 0;
+        _invert = invert;
 
-        pinMode(pin, INPUT_PULLUP);
+        pinMode(pin, pullup ? INPUT_PULLUP : INPUT);
 
         // 空読み
         for(int i = 0; i < 8; ++i)
@@ -40,7 +41,6 @@ public:
         }
 
         _needWait = needWait;
-        _lockfreeTime = 10 * 1000 * 1000;
     }
 
     /// @brief ボタン状態を取得
@@ -49,15 +49,12 @@ public:
     {
         uint8_t value = readPin();
         ulong micro = micros();
-        if (_needWait && micro < _leadLastMicros + 1000)
-        {
-            if (micro < _leadLastMicros + _lockfreeTime)
-            {
-                _leadLastMicros = micros();
-            }
 
+        if (_needWait && (micros() - _leadLastMicros) < 1000)
+        {
             return _lastResult;
         }
+
         _leadLastMicros = micros();
         _lastResult = 0;
 
@@ -103,7 +100,7 @@ public:
                 _lastMicros = micros();
             }
             // Hold confirm
-            else if (micros() >= _lastMicros + _holdTime)
+            else if ((micros() - _lastMicros) >= _holdTime)
             {
                 _holdStage = 2;
             }
@@ -126,15 +123,15 @@ protected:
     ulong _lastMicros;
     ulong _holdTime;
     ulong _leadLastMicros;
-    ulong _lockfreeTime;
     uint8_t _lastResult;
     bool _needWait;
+    bool _invert;
 
     /// @brief ピン値読込
     /// @return
     virtual uint8_t readPin()
     {
-        return gpio_get(_pin);
-        // return digitalRead(_pin);
+        bool result = gpio_get(_pin);
+        return _invert ? !result : result;
     }
 };

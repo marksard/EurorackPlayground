@@ -31,9 +31,11 @@ public:
         pinMode(pin1, INPUT_PULLUP);
         pinMode(pin2, INPUT_PULLUP);
 
-        _timePrev = micros();
+        // _timePrev = micros();
+        _timePrev = 0;
         _timeCurrent = _timePrev;
         _holdMode = holdMode;
+        _value = 0;
 
         getDirection(); // 空読みして値をいれておく
     }
@@ -42,9 +44,42 @@ public:
     /// @return 0:none plus:clockwise minus:counter clockwise
     int8_t getDirection(bool accelerate = false)
     {
+        static byte stateHistory[4] = {0}; // 状態履歴を保持
+        static byte historyIndex = 0;     // 履歴のインデックス
+
+        // オーバーフローを考慮した時間差の計算
+        if ((micros() - _timePrev) < 500)
+        {
+            if (!_holdMode)
+                _value = 0;
+
+            return _value;
+        }
+
         byte value1, value2;
         getPinValue(&value1, &value2);
         byte state = value1 | (value2 << 1);
+
+        // 状態履歴を更新
+        stateHistory[historyIndex] = state;
+        historyIndex = (historyIndex + 1) % 4;
+
+        // 状態履歴がすべて同じ場合のみ処理を進める
+        bool stable = true;
+        for (byte i = 1; i < 4; ++i)
+        {
+            if (stateHistory[i] != stateHistory[0])
+            {
+                stable = false;
+                break;
+            }
+        }
+
+        if (!stable)
+        {
+            return _value; // 状態が安定していない場合は値を更新しない
+        }
+
         _index = (_index << 2) + (state & 3);
         _index &= 15;
 
@@ -63,8 +98,15 @@ public:
             _value = accelerate ? getDelta() * -1 : -1;
             break;
         default:
+            if (!accelerate)
+            {
+                _timePrev = _timeCurrent;
+                _timeCurrent = micros();
+            }
             if (!_holdMode)
+            {
                 _value = 0;
+            }
             break;
         }
 
