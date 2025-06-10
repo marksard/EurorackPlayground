@@ -48,7 +48,8 @@ MCP4922 MCP(PIN_SPI1_MOSI, PIN_SPI1_SCK); // MOSI, SCK
 #define VOCT A2
 
 #define PWM_RESO 4096 // 12bit
-#define SAMPLE_FREQ ((CPU_CLOCK / INTR_PWM_RESO) / 8) // 32470.703125khz
+// #define SAMPLE_FREQ ((CPU_CLOCK / INTR_PWM_RESO) / 8.0) // 32470.703125khz
+#define SAMPLE_FREQ ((CPU_CLOCK / INTR_PWM_RESO) / 4.0) // 65khz
 static uint interruptSliceNum;
 
 // 標準インターフェース
@@ -398,7 +399,7 @@ void loop()
         osc[3].setFrequencyFromNoteNameIndex(rootIndex + addRootScale[userConfig.scale][scaleIndex][3] + seventhMinus);
     }
 
-    sleep_us(100); // 10kHz
+    sleep_us(250); // 4kHz
 }
 
 void setup1()
