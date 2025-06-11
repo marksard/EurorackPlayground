@@ -21,7 +21,7 @@
 #include "Oscillator.hpp"
 #include "EepromData.h"
 
-#define USE_MCP4922
+// #define USE_MCP4922
 #ifdef USE_MCP4922
 #define SPI_CLOCK 20000000
 #include "MCP_DAC.h"
@@ -46,6 +46,16 @@ MCP4922 MCP(PIN_SPI1_MOSI, PIN_SPI1_SCK); // MOSI, SCK
 #define OUT2 D1 // dc
 #define POT1 A0
 #define VOCT A2
+
+// rev110改専用
+#ifndef USE_MCP4922
+#define USE_110_kai
+#ifdef USE_110_kai
+#define OUT_A_BIAS D13
+#define OUT_B_BIAS D12 // SPIのピンを使用
+#endif
+#endif
+#define EXTRA_GATE D9
 
 #define PWM_RESO 4096 // 12bit
 // #define SAMPLE_FREQ ((CPU_CLOCK / INTR_PWM_RESO) / 8.0) // 32470.703125khz
@@ -301,6 +311,12 @@ void setup()
     SPI1.begin();
 #endif
 #else
+#ifdef USE_110_kai
+    pinMode(OUT_A_BIAS, OUTPUT);
+    pinMode(OUT_B_BIAS, OUTPUT);
+    gpio_put(OUT_A_BIAS, HIGH);
+    gpio_put(OUT_B_BIAS, HIGH);
+#endif
     initPWM(OUT1, PWM_RESO, false);
     initPWM(OUT2, PWM_RESO, false);
 
