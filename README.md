@@ -1,5 +1,7 @@
 # Eurorack Playground MkI
 
+**-- This is a deprecated product. It is not recommended due to instability. --**
+
 RP2040 MCU application playground for Eurorack.
 
 ## Specification
